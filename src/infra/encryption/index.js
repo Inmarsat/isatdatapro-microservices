@@ -1,8 +1,8 @@
 'use strict';
-
+const dotenv = require('dotenv').config();
 const crypto = require('crypto');
 const algorithm = 'aes-256-cbc';
-const key = require('../../../config/local.settings.json').crypto.key;
+const key = process.env.CRYPTO_KEY;
 
 /**
  * Encrypts a string using AES-256-CBC

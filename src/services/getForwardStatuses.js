@@ -1,13 +1,12 @@
 'use strict';
 
+const logger = require('../infra/logger').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
-//const codec = require('../codec/modemMessageParser');
-const DatabaseContext = require('../infra/database/repositories/azureCosmosRepository');
+const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const ForwardMessage = require('../infra/database/models/messageForward');
-const Mobile = require('../infra/database/models/mobile');
-const emitter = require('../infra/eventHandler/emitter');
+const emitter = require('../infra/eventHandler');
 
 module.exports = async function(context) {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -35,7 +34,7 @@ module.exports = async function(context) {
     const callTimeUtc = new Date().toISOString();
     let moreToRetrieve = null;
     let apiCallLog = new ApiCallLog(operation, idpGateway.name, mailbox.mailboxId, callTimeUtc);
-    //logger.log(`Getting status for messages ${JSON.stringify(filter)}`);
+    //logger.debug(`Getting status for messages ${JSON.stringify(filter)}`);
     await Promise.resolve(idpApi.getForwardStatuses(auth, filter, idpGateway.url))
     .then(async function (result) {
       //logger.debug(`getForwardStatuses result: ${JSON.stringify(result)}`);
@@ -49,7 +48,7 @@ module.exports = async function(context) {
         }
         apiCallLog.nextStartId = result.nextStartId;
         if (result.statuses) {
-          logger.log(`Retrieved ${result.statuses.length} statuses for mailbox ${mailbox.mailboxId}`);
+          logger.debug(`Retrieved ${result.statuses.length} statuses for mailbox ${mailbox.mailboxId}`);
           apiCallLog.messageCount = result.statuses.length;
           for (let s=0; s < result.statuses.length; s++) {
             let message = new ForwardMessage();
@@ -64,8 +63,9 @@ module.exports = async function(context) {
               if (dbMessage.state !== message.state) {
                 let newState = message.getStateName();
                 let newStateReason = message.getStateReason();
-                logger.log(`Message ${message.messageId} ${newState} ${newStateReason}`);
-                //TODO: notify completion or failure probably via Event queue
+                const stateMessage = `Message ${message.messageId} ${newState} ${newStateReason}`;
+                logger.info(stateMessage);
+                emitter.emit('ForwardMessageStateChange', stateMessage);
                 dbMessage.updateStatus(message);
                 dbMessage.id = id;
                 let res = await database.update(dbMessage.toDb());
@@ -73,9 +73,9 @@ module.exports = async function(context) {
             } else {
               let { created: sentByAnother } = await database.upsert(message.toDb(), messageFilter);
               if (sentByAnother) {
-                logger.warn(`Mobile Terminated message ${message.messageId} not found in database`);
-                //TODO getForwardMessage probably via Event queue (somebody else sent one)
-                emitter.emit('OtherForwardMessage', `New Forward message status ${message.messageId}`);
+                const otherSubmitterMessage = `New Forward message ${message.messageId} from unknown client`;
+                logger.warn(otherSubmitterMessage);
+                emitter.emit('OtherForwardMessage', otherSubmitterMessage);
               }
             }
           }
@@ -83,7 +83,7 @@ module.exports = async function(context) {
             moreToRetrieve = { startMessageId: result.nextStartId };
           }
         } else {
-          logger.log(`No Statuses to retriveve from Mailbox ${mailbox.mailboxId}`);
+          logger.debug(`No Statuses to retriveve from Mailbox ${mailbox.mailboxId}`);
         }
       } else {
         await dbUtilities.handleApiError(apiCallLog);
@@ -103,13 +103,6 @@ module.exports = async function(context) {
     }
   }
 
-  if (typeof(timer) !== 'undefined') {
-    let descriptor = timer.IsPastDue ? 'timer past due!' : `timer triggered at ${callTime}`
-    logger.log(`${thisFunction.name} ${descriptor}`);
-  } else {
-    logger.log(`${thisFunction.name} triggered without timer at ${callTime}`);
-  }
-  
   try {
     const mailboxes = await dbUtilities.getMailboxes(database);
     for (let m=0; m < mailboxes.length; m++) {

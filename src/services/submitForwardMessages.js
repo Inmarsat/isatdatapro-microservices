@@ -2,13 +2,13 @@
 
 const logger = require('../infra/logger').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
-const DatabaseContext = require('../infra/database/repositories/azureCosmosRepository');
+const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const ForwardMessage = require('../infra/database/models/messageForward');
 const Mobile = require('../infra/database/models/mobile');
 const supportedCommands = require('../infra/messageCodecs/coreModem');
-const emitter = require('../infra/eventHandler/emitter');
+const emitter = require('../infra/eventHandler');
 
 module.exports = async function(context, req) {
   const thisFunction = {name: logger.getModuleName(__filename)};

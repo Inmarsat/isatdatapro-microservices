@@ -1,7 +1,7 @@
 'use strict';
 const Model = require('./model');
 const category = require('./categories.json').mailbox;
-const crypto = require('../../encryption/protectPassword');
+const crypto = require('../../encryption');
 
 function Mailbox(mailboxId, name, accessId, password, messageGateway, enabled) {
   Model.call(this, category);

@@ -1,5 +1,5 @@
 const getMessages = require('../src/services/getReturnMessages');
-const emitter = require('../src/infra/eventHandler/emitter');
+const emitter = require('../src/infra/eventHandler');
 
 const testGetReturn = async() => {
   try {

@@ -3,12 +3,12 @@
 
 const logger = require('../infra/logger').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
-const DatabaseContext = require('../infra/database/repositories/azureCosmosRepository');
+const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const ReturnMessage = require('../infra/database/models/messageReturn');
 const Mobile = require('../infra/database/models/mobile');
-const emitter = require('../infra/eventHandler/emitter');
+const emitter = require('../infra/eventHandler');
 
 /**
  * Fetches new mobile-originated messages, stores by unique ID and puts

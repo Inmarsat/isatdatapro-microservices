@@ -1,16 +1,15 @@
 'use strict';
-const config = require('../../../../config/local.settings.json').database;
+const dotenv = require('dotenv').config();
 const logger = require('../../logger').loggerProxy(__filename);
-// TODO: robust generic config file
 const CosmosClient = require('@azure/cosmos').CosmosClient;
 const propertyConversion = require('../utilities/propertyConversion');
 
-const endpoint = config.endpoint;
-const key = config.key;
-const databaseId = config.databaseId;
-const containerId = config.containerId;
-const partitionKey = config.partitionKey;
-const throughput = config.throughput;
+const endpoint = process.env.DB_HOST;
+const key = process.env.DB_PASS;
+const databaseId = process.env.DB_NAME;
+const containerId = process.env.DB_CONTAINER;
+const partitionKey = { "kind": "Hash", "paths": [`/${process.env.DB_PARTITION}`] };
+const throughput = process.env.DB_THROUGHPUT;
 
 
 function DatabaseContext() {

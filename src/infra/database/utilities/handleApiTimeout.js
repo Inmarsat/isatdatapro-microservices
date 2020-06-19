@@ -1,6 +1,6 @@
 'use strict';
 const logger = require('../../logger').loggerProxy(__filename);
-const emitter = require('../../eventHandler/emitter');
+const emitter = require('../../eventHandler');
 const updateSatelliteGateway = require('./updateSatelliteGateway');
 
 /**

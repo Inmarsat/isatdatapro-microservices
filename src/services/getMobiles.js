@@ -2,11 +2,11 @@
 
 const logger = require('../infra/logger').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
-const DatabaseContext = require('../infra/database/repositories/azureCosmosRepository');
+const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const Mobile = require('../infra/database/models/mobile');
-const emitter = require('../infra/eventHandler/emitter');
+const emitter = require('../infra/eventHandler');
 
 module.exports = async function(context, req) {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -82,7 +82,7 @@ module.exports = async function(context, req) {
   }
 
   try {
-    logger.log(`${thisFunction.name} http triggered at ${callTime}`);
+    logger.info(`${thisFunction.name} http triggered at ${callTime}`);
     // TODO: first filter on mailbox then on gateway
     let filterMailbox;
     let filterGateway;

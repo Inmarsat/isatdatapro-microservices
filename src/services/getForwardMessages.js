@@ -1,12 +1,13 @@
 'use strict';
 
+const logger = require('../infra/logger').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
-const DatabaseContext = require('../infra/database/repositories/azureCosmosRepository');
+const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const ForwardMessage = require('../infra/database/models/messageForward');
 const Mobile = require('../infra/database/models/mobile');
-const emitter = require('../infra/eventHandler/emitter');
+const emitter = require('../infra/eventHandler');
 
 module.exports = async function(context, req) {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -29,7 +30,7 @@ module.exports = async function(context, req) {
     let apiCallLog = new ApiCallLog(operation, idpGateway.name, mailbox.mailboxId, callTimeUtc);
     await Promise.resolve(idpApi.getForwardMessages(auth, messageId, idpGateway.url))
     .then(async function (result) {
-      context.log(`${operation} result: ${JSON.stringify(result)}`);
+      logger.debug(`${operation} result: ${JSON.stringify(result)}`);
       let success = await dbUtilities.handleApiResponse(database, result.errorId, apiCallLog, idpGateway);
       if (success) {
         if (result.messages.length > 0) {
@@ -39,7 +40,7 @@ module.exports = async function(context, req) {
             message.mailboxId = mailbox.mailboxId;
             // TODO: ensure this covers all cases doesn't lose important data
             if (message.errorId !== 0) {
-              context.log(`Get forward message error: ${message.error}`);
+              logger.error(`Get forward message error: ${message.error}`);
             } else {
               let messageFilter = { messageId: message.messageId };
               let id = await database.exists(message.toDb(), messageFilter);
@@ -52,7 +53,7 @@ module.exports = async function(context, req) {
                 await database.update(dbMessage.toDb());
               } else {
                 let { id: id, created: newMessage } = await database.upsert(message.toDb(), messageFilter);
-                context.log(`Added forward message ${message.messageId} to database (${id})`);
+                logger.info(`Added forward message ${message.messageId} to database (${id})`);
                 emitter.emit('NewForwardMessage', `Message ${message.messageId} submitted`);
                 let mobile = new Mobile();
                 mobile.mobileId = message.mobileId;
@@ -61,7 +62,7 @@ module.exports = async function(context, req) {
                 let mobileFilter = { mobileId: message.mobileId };
                 let { id: id, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
                 if (newMobile) {
-                  context.log(`Mobile ${mobile.mobileId} added to database (${id})`);
+                  logger.info(`Mobile ${mobile.mobileId} added to database (${id})`);
                   emitter.emit('NewMobile', `New mobile ${mobile.mobileId} found when submitting message ${message.messageId}`);
                 }
               }
@@ -85,7 +86,7 @@ module.exports = async function(context, req) {
   }
 
   try {
-    context.log(`${thisFunction.name} http triggered at ${callTime}`);
+    logger.debug(`${thisFunction.name} http triggered at ${callTime}`);
     if (req.query && req.query.messageId) {
       await getMessage(req.query.messageId);
     }
