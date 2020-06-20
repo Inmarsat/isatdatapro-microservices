@@ -55,8 +55,8 @@ module.exports = async function(context, req) {
               dbMobile.id = id;
               await database.update(dbMobile.toDb());
             } else {
-              let { id: id } = await database.upsert(mobile.toDb(), mobileFilter);
-              logger.debug(`Added mobile ${mobile.mobileId} to database (${id})`);
+              let { id: id1 } = await database.upsert(mobile.toDb(), mobileFilter);
+              logger.debug(`Added mobile ${mobile.mobileId} to database (${id1})`);
               emitter.emit('NewMobile', `New mobile ${mobile.mobileId} from API query`);
             }
           }

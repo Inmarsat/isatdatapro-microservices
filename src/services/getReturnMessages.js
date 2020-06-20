@@ -80,17 +80,6 @@ module.exports = async function (context) {
                 logger.debug(newMobileNotify);
                 emitter.emit('NewMobile', newMobileNotify);
               }
-              // TODO add to event queue and move parsing logic to another function/microservice
-              /*
-              if (message.codecServiceId === 0) {
-                let notifyMessage = codec.parseCoreModem(message);
-                context.log(`NOTIFICATION: ${JSON.stringify(notifyMessage)}`);
-              } else if (message.codecServiceId === 15 && message.mobileId.includes('SKY')) {
-                context.log(`WARNING suspected firmware lock on ${message.mobileId}`);
-              } else {
-              context.log(`Parsing not defined for codecServiceId=${message.codecServiceId}`);
-              }
-              */
             } else {
               logger.warn(`Retrieved message ${message.messageId} already in database`);
             }

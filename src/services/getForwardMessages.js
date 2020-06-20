@@ -52,17 +52,17 @@ module.exports = async function(context, req) {
                 dbMessage.id = id;
                 await database.update(dbMessage.toDb());
               } else {
-                let { id: id, created: newMessage } = await database.upsert(message.toDb(), messageFilter);
-                logger.info(`Added forward message ${message.messageId} to database (${id})`);
+                let { id: id1, created: newMessage } = await database.upsert(message.toDb(), messageFilter);
+                logger.info(`Added forward message ${message.messageId} to database (${id1})`);
                 emitter.emit('NewForwardMessage', `Message ${message.messageId} submitted`);
                 let mobile = new Mobile();
                 mobile.mobileId = message.mobileId;
                 mobile.mailboxId = mailbox.mailboxId;
                 mobile.mobileWakeupPeriod = message.mobileWakeupPeriod;
                 let mobileFilter = { mobileId: message.mobileId };
-                let { id: id, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
+                let { id: id2, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
                 if (newMobile) {
-                  logger.info(`Mobile ${mobile.mobileId} added to database (${id})`);
+                  logger.info(`Mobile ${mobile.mobileId} added to database (${id2})`);
                   emitter.emit('NewMobile', `New mobile ${mobile.mobileId} found when submitting message ${message.messageId}`);
                 }
               }

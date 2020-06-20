@@ -68,7 +68,7 @@ module.exports = async function(context) {
                 emitter.emit('ForwardMessageStateChange', stateMessage);
                 dbMessage.updateStatus(message);
                 dbMessage.id = id;
-                let res = await database.update(dbMessage.toDb());
+                await database.update(dbMessage.toDb());
               }
             } else {
               let { created: sentByAnother } = await database.upsert(message.toDb(), messageFilter);
