@@ -1,6 +1,6 @@
 const getMobiles = require('../src/services/getMobiles');
 const messageGatewayName = 'Inmarsat';
-const emitter = require('../src/infra/eventHandler');
+const events = require('../src/infra/eventHandler').emitter;
 
 const testGetMobiles = async() => {
   const req = {
@@ -9,7 +9,7 @@ const testGetMobiles = async() => {
     }
   };
   try {
-    emitter.addListener('NewMobile', (detail) => {
+    events.addListener('NewMobile', (detail) => {
       console.log('New Mobile found: ' + detail);
     });
     await getMobiles(console, req);

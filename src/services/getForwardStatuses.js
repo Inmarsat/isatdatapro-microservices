@@ -6,7 +6,7 @@ const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const ForwardMessage = require('../infra/database/models/messageForward');
-const emitter = require('../infra/eventHandler');
+const event = require('../infra/eventHandler');
 
 module.exports = async function(context) {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -14,7 +14,6 @@ module.exports = async function(context) {
   const callTime = new Date().toISOString();
   const database = new DatabaseContext();
   await database.initialize();
-  let idpGateway;
 
   /**
    * Retrieves Forward message statuses using high water mark
@@ -23,7 +22,7 @@ module.exports = async function(context) {
    */
   async function getStatuses(mailbox, filter) {
     const operation = 'getForwardStatuses';
-    idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
+    const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
       password: await mailbox.passwordGet(),
@@ -51,32 +50,25 @@ module.exports = async function(context) {
           logger.debug(`Retrieved ${result.statuses.length} statuses for mailbox ${mailbox.mailboxId}`);
           apiCallLog.messageCount = result.statuses.length;
           for (let s=0; s < result.statuses.length; s++) {
+            const status = result.statuses[s];
             let message = new ForwardMessage();
-            await message.populate(result.statuses[s]);
+            await message.populate(status);
+            message.updateStatus(status);
             message.mailboxId = mailbox.mailboxId;
             let messageFilter = { messageId: message.messageId };
-            let id = await database.exists(message.toDb(), messageFilter);
-            if (id) {
-              let dbMessage = new ForwardMessage();
-              let dbMessageContent = await database.read(id, message.category);
-              dbMessage.fromDb(dbMessageContent);
-              if (dbMessage.state !== message.state) {
+            let { id, changeList, created } = await database.upsert(message.toDb(), messageFilter);
+            if (!created) {
+              logger.debug(`State change list: ${JSON.stringify(changeList)}`);
+              if (changeList && 'state' in changeList) {
                 let newState = message.getStateName();
                 let newStateReason = message.getStateReason();
-                const stateMessage = `Message ${message.messageId} ${newState} ${newStateReason}`;
-                logger.info(stateMessage);
-                emitter.emit('ForwardMessageStateChange', stateMessage);
-                dbMessage.updateStatus(message);
-                dbMessage.id = id;
-                await database.update(dbMessage.toDb());
+                logger.info(`Message ${message.messageId} ${newState} ${newStateReason}`);
+                event.forwardMessageStateChange(message.messageId, newStateReason, message.mobileId);
               }
             } else {
-              let { created: sentByAnother } = await database.upsert(message.toDb(), messageFilter);
-              if (sentByAnother) {
-                const otherSubmitterMessage = `New Forward message ${message.messageId} from unknown client`;
-                logger.warn(otherSubmitterMessage);
-                emitter.emit('OtherForwardMessage', otherSubmitterMessage);
-              }
+              // implies that another API client submitted, trigger event that can get the submission
+              logger.warn(`New Forward message ${message.messageId}from unknown IOP API client`);
+              event.otherClientForwardSubmission(message.messageId, message.mailboxId);
             }
           }
           if (result.more) {
@@ -113,7 +105,6 @@ module.exports = async function(context) {
     switch(err.message) {
       default:
         logger.error(err.stack);
-        console.trace();
         throw err;
     }
   } finally {

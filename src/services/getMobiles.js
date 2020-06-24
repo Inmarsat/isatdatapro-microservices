@@ -6,7 +6,7 @@ const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const Mobile = require('../infra/database/models/mobile');
-const emitter = require('../infra/eventHandler');
+const event = require('../infra/eventHandler');
 
 module.exports = async function(context, req) {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -15,11 +15,10 @@ module.exports = async function(context, req) {
   const database = new DatabaseContext();
   const MAX_MOBILES = 1000;
   await database.initialize();
-  let idpGateway;
 
   async function getMobiles(mailbox, nextMobileId) {
     const operation = 'getMobiles';
-    idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
+    const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
       password: await mailbox.passwordGet(),
@@ -45,19 +44,13 @@ module.exports = async function(context, req) {
             await mobile.populate(result.mobiles[m]);
             mobile.mailboxId = mailbox.mailboxId;
             let mobileFilter = { mobileId: mobile.mobileId };
-            let id = await database.exists(mobile.toDb(), mobileFilter);
-            if (id) {
-              console.debug(`Updating mobile ${mobile.mobileId} (${id})`);
-              let dbMobile = new Mobile();
-              let dbMobileContent = await database.read(id, mobile.category);
-              dbMobile.fromDb(dbMobileContent);
-              dbMobile.updateNonNull(mobile);
-              dbMobile.id = id;
-              await database.update(dbMobile.toDb());
+            let { id: id, created: created } = await database.upsert(mobile.toDb(), mobileFilter);
+            //let id = await database.exists(mobile.toDb(), mobileFilter);
+            if (!created) {
+              logger.debug(`Updating mobile ${mobile.mobileId} (${id})`);
             } else {
-              let { id: id1 } = await database.upsert(mobile.toDb(), mobileFilter);
-              logger.debug(`Added mobile ${mobile.mobileId} to database (${id1})`);
-              emitter.emit('NewMobile', `New mobile ${mobile.mobileId} from API query`);
+              logger.debug(`Added mobile ${mobile.mobileId} to database (${id})`);
+              event.newMobile(mobile.mobileId, mobile.mailboxId, operation);
             }
           }
         } else {
@@ -71,9 +64,11 @@ module.exports = async function(context, req) {
     .catch(async (err) => {
       //TODO: handle promise error more elegantly
       // e.g. alert on API non-response or 500
-      console.log(err);
-      let apiOutage = await dbUtilities.handleApiTimeout(err, idpGateway);
-      if (!apiOutage) throw err;
+      let apiOutage = await dbUtilities.handleApiTimeout(err, database, idpGateway);
+      if (!apiOutage) {
+        logger.error(err);
+        throw err;
+      }
     });
     await database.create(apiCallLog.toDb());
     if (typeof(nextMobileId) === 'string') {
@@ -98,7 +93,7 @@ module.exports = async function(context, req) {
       await getMobiles(mailboxes[m])
     }
   } catch (err) {
-    console.error(err.stack);
+    logger.error(err.stack);
     throw err;
   } finally {
     await database.close();

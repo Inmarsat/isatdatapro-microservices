@@ -1,14 +1,27 @@
 'use strict';
 const Message = require('./message');
+const { Payload, Fields } = require('./messagePayloadJson');
 const category = require('./categories.json').messageReturn;
 
-function MessageReturn(messageId, mobileId, codecServiceId, payloadRaw, payloadJson, mailboxTimeUtc, receiveTimeUtc) {
-  Message.call(this, messageId, mobileId, payloadRaw, payloadJson, mailboxTimeUtc);
+function MessageReturn(messageId, mobileId, codecServiceId, payloadRaw, payloadJson, mailboxTimeUtc, receiveTimeUtc, satelliteRegion, mailboxId) {
+  Message.call(this, messageId, mobileId);
   this.category = category;
   this.subcategory = 'return';
-  this.receiveTimeUtc = typeof(receiveTimeUtc) === 'string' ? receiveTimeUtc : null;
   this.codecServiceId = typeof(codecServiceId) === 'number' ? codecServiceId : null;
-  this.satelliteRegion = null;
+  if (payloadRaw instanceof Array) {
+    this.payloadRaw = payloadRaw;
+    this.codecServiceId = payloadRaw[0];
+    this.codecMessageId = payloadRaw[1];
+  }
+  if (payloadJson instanceof Payload) {
+    this.payloadJson = payloadJson;
+    this.codecServiceId = payloadJson.codecServiceId;
+    this.codecMessageId = payloadJson.codecMessageId;
+  }
+  this.mailboxTimeUtc = typeof(mailboxTimeUtc) === 'string' ? mailboxTimeUtc : null;
+  this.receiveTimeUtc = typeof(receiveTimeUtc) === 'string' ? receiveTimeUtc : null;
+  this.satelliteRegion = typeof(satelliteRegion) === 'string' ? satelliteRegion : null;
+  this.mailboxId = typeof(mailboxId) === 'string' ? mailboxId : null;
 }
 
 MessageReturn.prototype = Object.create(Message.prototype);

@@ -86,8 +86,8 @@ DatabaseContext.prototype.find = async function(category, filter, options) {
     }
   }
   querySpec.query += `${order}`;
-  const { resources: items } = await this.container.items
-    .query(querySpec).fetchAll();
+  const { resources: items } = await this.container
+    .items.query(querySpec).fetchAll();
   /*
   items.forEach(item => {
     logger.debug(`Found ${item.id}: ${JSON.stringify(item)}`);
@@ -218,39 +218,56 @@ DatabaseContext.prototype.update = async function(item) {
 }
 
 /**
- * Updates an existing entity in the database or creates a new one
+ * Updates an existing entity in the database or creates a new one.
+ * Null and undefined values are not pushed in an update.
+ * If the item includes a timestamp indicated by _utc it will discard update if
+ * older than that property in the database entity.
  * @param {object} item The item to update (must exist in db)
  * @param {object} [filterOn] Optional filter on properties defining "exists"
- * @returns {object} { updatedItem, changeCount }
+ * @returns {object} { id, changeCount, created }
  */
 DatabaseContext.prototype.upsert = async function(item, filterOn) {
   if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
   let changeCount = 0;
+  let changeList = null;
   let { id, category, created } = await this.createIfNotExists(item, filterOn);
   if (!created) {
-    item.id = id;
-    const oldItem = await this.read(id, category);
-    const { resource: updatedItem } = await this.container
-      .item(id, category)
-      .replace(item);
-    for (let prop in oldItem) {
-      if (oldItem.hasOwnProperty(prop) && prop[0] !== '_') {
-        if (updatedItem.hasOwnProperty(prop)) {
-          if (oldItem[prop] !== updatedItem[prop]) {
+    let dbItem = await this.read(id, category);
+    let revert = Object.assign({}, dbItem);
+    changeList = {};
+    for (const prop in dbItem) {
+      if (dbItem.hasOwnProperty(prop) && item.hasOwnProperty(prop)) {
+          if (dbItem[prop] != item[prop]
+              && item[prop] !== null
+              && typeof(item[prop]) !== 'undefined') {
+            if (prop.includes('_utc')) {
+              let dbTime = new Date(dbItem[prop]);
+              let itemTime = new Date(item[prop]);
+              if (dbTime > itemTime) {
+                logger.warn(`Discarding update as ${prop} in database ${dbTime} is newer than ${itemTime}`);
+                dbItem = revert;
+                changeCount = 0;
+                changeList = null;
+                break;
+              }
+            }
+            changeList[prop] = {
+              old: dbItem[prop],
+              new: item[prop]
+            };
+            dbItem[prop] = item[prop];
             changeCount += 1;
-            logger.debug(`${category} ${prop} updated (${id})`);
           }
-        } else {
-          changeCount += 1;
-          logger.debug(`${category} ${prop} updated (${id})`);
-        }
       }
     }
-    //logger.debug(`Item ${updatedItem.id} updated ${changeCount} properties`);
+    const { resource: updatedItem } = await this.container
+      .item(id, category)
+      .replace(dbItem);
+    logger.debug(`Item ${updatedItem.id} updated ${changeCount} properties`);
   } else {
     logger.debug(`${category} added to database (${id})`);
   }
-  return { id: id, changeCount: changeCount, created: created };
+  return { id: id, changeList: changeList, created: created };
 }
 
 /**

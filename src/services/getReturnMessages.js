@@ -8,7 +8,7 @@ const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const ReturnMessage = require('../infra/database/models/messageReturn');
 const Mobile = require('../infra/database/models/mobile');
-const emitter = require('../infra/eventHandler');
+const event = require('../infra/eventHandler');
 
 /**
  * Fetches new mobile-originated messages, stores by unique ID and puts
@@ -21,7 +21,7 @@ module.exports = async function (context) {
   const callTime = new Date().toISOString();
   const database = new DatabaseContext();
   await database.initialize();
-  let idpGateway;
+  // TODO: REMOVE let idpGateway;
 
   /**
    * Retreives Mobile-Originated messages and stores unique ones in a database
@@ -31,7 +31,7 @@ module.exports = async function (context) {
    */
   async function getMessages(mailbox, filter) {
     const operation = 'getReturnMessages';
-    idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
+    const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
       password: await mailbox.passwordGet(),
@@ -63,22 +63,20 @@ module.exports = async function (context) {
             message.mailboxId = mailbox.mailboxId;
             // TODO: confirm if payload array/json cause issues
             let messageFilter = { messageId: message.messageId };
-            let { created: newMessage } = await database.createIfNotExists(message.toDb(), messageFilter);
+            let { id: id1, created: newMessage } = await database.createIfNotExists(message.toDb(), messageFilter);
             if (newMessage) {
-              const newMessageNotify = `Added return message ${message.messageId} to database`;
-              logger.debug(newMessageNotify);
-              emitter.emit('NewReturnMessage', newMessageNotify);
+              logger.debug(`Added return message ${message.messageId} to database (${id1})`);
+              event.newReturnMessage(message.messageId, message.mobileId, message.mailboxId, operation);
               let mobile = new Mobile();
               mobile.mobileId = message.mobileId;
               mobile.mailboxId = mailbox.mailboxId;
               mobile.satelliteRegion = message.satelliteRegion;
               mobile.lastMessageReceivedTimeUtc = message.receiveTimeUtc;
               let mobileFilter = { mobileId: message.mobileId };
-              let { created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
+              let { id: id2, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
               if (newMobile) {
-                const newMobileNotify = `Mobile ${mobile.mobileId} added to database`;
-                logger.debug(newMobileNotify);
-                emitter.emit('NewMobile', newMobileNotify);
+                logger.debug(`Mobile ${mobile.mobileId} added to database (${id2})`);
+                event.newMobile(mobile.mobileId, mobile.mailboxId, operation);
               }
             } else {
               logger.warn(`Retrieved message ${message.messageId} already in database`);

@@ -7,8 +7,8 @@ const dbUtilities = require('../infra/database/utilities');
 const ApiCallLog = require('../infra/database/models/apiCallLog');
 const ForwardMessage = require('../infra/database/models/messageForward');
 const Mobile = require('../infra/database/models/mobile');
-const supportedCommands = require('../infra/messageCodecs/coreModem');
-const emitter = require('../infra/eventHandler');
+const supportedCommands = require('../infra/messageCodecs/coreModem').commandMessages;
+const event = require('../infra/eventHandler');
 
 module.exports = async function(context, req) {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -16,7 +16,7 @@ module.exports = async function(context, req) {
   const callTime = new Date().toISOString();
   const database = new DatabaseContext();
   await database.initialize();
-  let idpGateway;
+  //TODO REMOVE let idpGateway;
 
   /**
    * Submits a single message to a mobile / broadcast group and stores the result
@@ -26,7 +26,7 @@ module.exports = async function(context, req) {
   async function submitMessage(message) {
     const operation = 'submitFowardMessages';
     const mailbox = await dbUtilities.getMobileMailbox(database, message.mobileId);
-    idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
+    const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
       password: await mailbox.passwordGet(),
@@ -42,7 +42,6 @@ module.exports = async function(context, req) {
           for (let s = 0; s < result.submissions.length; s++) {
             await message.populate(result.submissions[s]);
             message.mailboxId = mailbox.mailboxId;
-            // TODO: ensure this covers all cases doesn't lose important data
             if (message.errorId !== 0) {
               logger.debug(`Submission error: ${message.error}`);
             } else {
@@ -51,6 +50,7 @@ module.exports = async function(context, req) {
               let { id: id, created: newMessage } = await database.createIfNotExists(message.toDb(), messageFilter);
               if (newMessage) {
                 logger.debug(`Added forward message ${message.messageId} to database (${id})`);
+                event.newForwardMessage(message.messageId, message.mobileId, message.mailboxId, operation);
                 let mobile = new Mobile();
                 mobile.mobileId = message.mobileId;
                 mobile.mailboxId = mailbox.mailboxId;
@@ -59,7 +59,7 @@ module.exports = async function(context, req) {
                 let { id: id1, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
                 if (newMobile) {
                   logger.debug(`Mobile ${mobile.mobileId} added to database (${id1})`);
-                  emitter.emit('NewMobile', `Forward message submission to new Mobile ${mobile.mobileId}`);
+                  event.newMobile(mobile.mobileId, mobile.mailboxId, operation);
                 }
               }
             }

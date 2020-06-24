@@ -19,10 +19,13 @@ async function getStatusMailbox(database, messageId) {
   const findMessage = await database.find(categoryToFind, filterMessage);
   if (findMessage.length > 0) {
     message.fromDb(findMessage[0]);
-    let mailbox = await getMobileMailbox(database, message.mobileId);
-    return mailbox;
+    if (message.mobileId) {
+      const mailbox = await getMobileMailbox(database, message.mobileId);
+      return mailbox;
+    }
+    throw new Error(`Forward status ${messageId} mobileId unknown`);
   }
-  throw new Error(`Message ${messageId} not found in database`);
+  throw new Error(`Message/status ${messageId} not found in database`);
 }
 
 module.exports = getStatusMailbox;

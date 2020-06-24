@@ -1,20 +1,17 @@
 'use strict';
 const Model = require('./model');
 const category = require('./categories.json').message;
-const MessagePayloadJson = require('./messagePayloadJson');
+const { Payload, Field } = require('./messagePayloadJson');
 
-function Message(messageId, mobileId, mailboxId, payloadRaw, payloadJson, mailboxTimeUtc, size) {
+function Message(messageId, mobileId, mailboxId, codecServiceId, codecMessageId, payloadRaw, payloadJson, mailboxTimeUtc, size) {
   Model.call(this, category);
   this.messageId = typeof(messageId) === 'number' ? messageId : null;
   this.mobileId = typeof(mobileId) === 'string' ? mobileId : null;
   this.mailboxId = typeof(mailboxId) === 'string' ? mailboxId : null;
+  this.codecServiceId = typeof(codecServiceId) === 'number' ? codecServiceId : null;
+  this.codecMessageId = typeof(codecMessageId) === 'number' ? codecMessageId : null;
   this.payloadRaw = payloadRaw instanceof Array ? payloadRaw : null;
-  if (typeof(payloadJson) !== 'undefined' && payloadJson instanceof Object
-      && ('codecServiceId' in payloadJson && 'codecMessageId' in payloadJson && 'fields' in payloadJson)) {
-    this.payloadJson = payloadJson;
-  } else {
-    this.payloadJson = null;
-  }
+  this.payloadJson = payloadJson instanceof Payload ? payloadJson : null;
   this.mailboxTimeUtc = typeof(mailboxTimeUtc) === 'string' ? mailboxTimeUtc : '1970-01-01T00:00:00Z';
   this.size = typeof(size) === 'number' ? size : null;
 }

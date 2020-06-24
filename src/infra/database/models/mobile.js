@@ -10,6 +10,9 @@ function Mobile(mobileId, description, mailboxId) {
   this.satelliteRegion = null;
   this.lastRegistrationTimeUtc = null;
   this.lastMessageReceivedTimeUtc = null;
+  this.lastResetReason = null;
+  this.operatorTxState = null;
+  this.userTxState = null;
   this.mobileWakeupPeriod = 0;
   this.version = {
     hardware: '0.0.0',
@@ -17,14 +20,16 @@ function Mobile(mobileId, description, mailboxId) {
     product_id: '0',
   };
   this.location = {
-    latitude: 0.0,
+    latitude: 90.0,
     longitude: 180.0,
     altitude_m: 0.0,
     speed_kph: 0.0,
     heading: 0.0,
     timestamp: 0,
+    fixStatus: 0,
   };
-  this.broadcast_ids = [];
+  this.broadcastIdCount = 0;
+  this.broadcastIds = [];
 }
 
 Mobile.prototype = Object.create(Model.prototype);
