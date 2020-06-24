@@ -22,8 +22,8 @@ function newForwardMessage(messageId, mobileId, mailboxId, source) {
     `New forward message ${messageId} submitted to ${mobileId} (${source})`);
 }
 
-function forwardMessageStateChange(messageId, newState, mobileId) {
-  emitter.emit('ForwardMessageStateChange', messageId, newState, mobileId,
+function forwardMessageStateChange(messageId, mobileId, newState) {
+  emitter.emit('ForwardMessageStateChange', messageId, mobileId, newState,
     `Forward message ${messageId} to ${mobileId} changed to ${newState}`);
 }
 

@@ -63,7 +63,7 @@ module.exports = async function(context) {
                 let newState = message.getStateName();
                 let newStateReason = message.getStateReason();
                 logger.info(`Message ${message.messageId} ${newState} ${newStateReason}`);
-                event.forwardMessageStateChange(message.messageId, newStateReason, message.mobileId);
+                event.forwardMessageStateChange(message.messageId, message.mobileId, newStateReason);
               }
             } else {
               // implies that another API client submitted, trigger event that can get the submission
