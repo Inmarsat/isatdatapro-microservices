@@ -1,15 +1,12 @@
 'use strict';
 
 const codecServiceId = 0;
-const logger = require('../logger').loggerProxy(__filename);
+const logger = require('../logging').loggerProxy(__filename);
 const Mobile = require('../database/models/mobile');
 const { Payload, Field } = require('../database/models/messagePayloadJson');
 const ReturnMessage = require('../database/models/messageReturn');
 const ForwardMessage = require('../database/models/messageForward');
 
-logger.warn(`Codec not implemented for SIN ${codecServiceId}`);
-
-//TODO parsers
 /**
  * Rounds a number to a certain decimal precision
  * @param {number} num A decimal number

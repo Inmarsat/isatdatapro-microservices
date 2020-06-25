@@ -1,7 +1,7 @@
 // getReturnMessages microservice
 'use strict';
 
-const logger = require('../infra/logger').loggerProxy(__filename);
+const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
@@ -90,13 +90,10 @@ module.exports = async function (context) {
         } else {
           logger.debug(`No messages to retrieve from mailbox ${mailbox.mailboxId}`);
         }
-      } else {
-        await dbUtilities.handleApiError(apiCallLog);
-        logger.warn(`Get return messages failed with reason ${apiCallLog.error}`);
       }
     })
     .catch(async function (err) {
-      let apiOutage = await dbUtilities.handleApiTimeout(err, database, idpGateway);
+      let apiOutage = await dbUtilities.handleApiFailure(err, database, idpGateway);
       if (!apiOutage) {
         logger.error(err);
         throw err;

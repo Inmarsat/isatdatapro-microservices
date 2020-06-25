@@ -5,8 +5,12 @@
  */
 'use strict';
 
+require('dotenv').config();
 const { createLogger, format, transports, config } = require('winston');
 const { combine, timestamp, colorize, printf } = format;
+
+const logfileLevel = process.env.LOGFILE_LEVEL || 'info';
+const logfileLocation = process.env.LOGFILE_LOCATION || `./logs/info.log`;
 
 /**
  * Generates the custom JSON formatting
@@ -34,8 +38,8 @@ const customFormat = printf(info => {
 //: Logger configuration for different outputs
 const options = {
   file: {
-    level: 'info',
-    filename: `./logs/info.log`,
+    level: logfileLevel,
+    filename: logfileLocation,
     handleException: true,
     humanReadableUnhandledException: true,
     maxsize: 5242880,

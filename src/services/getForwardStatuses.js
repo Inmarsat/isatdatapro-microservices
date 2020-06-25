@@ -1,6 +1,6 @@
 'use strict';
 
-const logger = require('../infra/logger').loggerProxy(__filename);
+const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
@@ -77,13 +77,10 @@ module.exports = async function(context) {
         } else {
           logger.debug(`No Statuses to retriveve from Mailbox ${mailbox.mailboxId}`);
         }
-      } else {
-        await dbUtilities.handleApiError(apiCallLog);
-        logger.error(`Get forward statuses failed with reason ${apiCallLog.error}`);
       }
     })
     .catch(async function (err) {
-      let apiOutage = await dbUtilities.handleApiTimeout(err, idpGateway);
+      let apiOutage = await dbUtilities.handleApiFailure(err, idpGateway);
       if (!apiOutage) {
         logger.error(err);
         throw err;

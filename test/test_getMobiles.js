@@ -18,4 +18,4 @@ const testGetMobiles = async() => {
   }
 };
 
-//testGetMobiles();
+testGetMobiles();

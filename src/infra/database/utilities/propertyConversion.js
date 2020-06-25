@@ -1,5 +1,5 @@
 'use strict';
-//const logger = require('../../logger').loggerProxy(__filename);
+//const logger = require('../../logging').loggerProxy(__filename);
 
 /**
  * Converts camelCase to snake_case

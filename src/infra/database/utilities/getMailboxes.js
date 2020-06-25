@@ -1,5 +1,5 @@
 'use strict';
-//const logger = require('../../logger').loggerProxy(__filename);
+//const logger = require('../../logging').loggerProxy(__filename);
 const Mailbox = require('../models/mailbox');
 const mailboxCategory = require('../models/categories.json').mailbox;
 const propertyConversion = require('./propertyConversion');
@@ -7,17 +7,17 @@ const propertyConversion = require('./propertyConversion');
 /**
  * Returns a list of Mailbox entities in the database
  * @param {DatabaseContext} database The database context/connection
- * @param {string} [messageGateway] Optional filter on message gateway system
+ * @param {string} [satelliteGatewayName] Optional filter on message gateway system
  * @param {string} [mailboxId] Optional filter on mailbox ID
  * @returns {Mailbox[] | Mailbox} A list of Mailboxes or single if ID was specified
  */
-async function getMailboxes(database, messageGateway, mailboxId) {
+async function getMailboxes(database, satelliteGatewayName, mailboxId) {
   let mailboxes = [];
   const categoryToFind = mailboxCategory;
   let filter = { enabled: true };
-  if (messageGateway) { filter.messageGateway = messageGateway; }
+  if (satelliteGatewayName) { filter.satelliteGatewayName = satelliteGatewayName; }
   if (mailboxId) { filter.mailboxId = String(mailboxId); }
-  if ('messageGateway' in filter || 'mailboxId' in filter) {
+  if ('satelliteGatewayName' in filter || 'mailboxId' in filter) {
     filter = propertyConversion.dbFilter(filter);
   }
   const findResults = await database.find(categoryToFind, filter);

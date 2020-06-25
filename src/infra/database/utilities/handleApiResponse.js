@@ -1,6 +1,6 @@
 'use strict';
-const logger = require('../../logger').loggerProxy(__filename);
-const emitter = require('../../eventHandler');
+const logger = require('../../logging').loggerProxy(__filename);
+const event = require('../../eventHandler');
 const idpApi = require('isatdatapro-api');
 const updateSatelliteGateway = require('./updateSatelliteGateway');
 
@@ -10,23 +10,23 @@ const updateSatelliteGateway = require('./updateSatelliteGateway');
  * @param {DatabaseContext} database The database context/connection
  * @param {number} errorId The error ID returned by the API call
  * @param {ApiCallLog} apiCallLog An ApiCallLog entity
- * @param {SatelliteGateway} idpGateway A SatelliteGateway entity
+ * @param {SatelliteGateway} satelliteGateway A SatelliteGateway entity
  * @returns {boolean} true if the response had no errors
  */
-async function handleApiResponse(database, errorId, apiCallLog, idpGateway) {
+async function handleApiResponse(database, errorId, apiCallLog, satelliteGateway) {
   if (typeof(errorId) !== 'number') throw new Error(`Invalid errorId`);
   apiCallLog.completed = true;
-  idpGateway.alive = true;
-  let apiRecovered = await updateSatelliteGateway(database, idpGateway);
+  satelliteGateway.alive = true;
+  let apiRecovered = await updateSatelliteGateway(database, satelliteGateway);
   if (apiRecovered) {
-    logger.info(`${apiCallLog.operation}: API recovered for ${idpGateway.name}`);
-    // TODO notify recovery
-    emitter.emit('ApiRecovery', `API recovered for ${idpGateway.name}`);
+    logger.info(`${apiCallLog.operation}: API recovered for ${satelliteGateway.name}`);
+    event.apiRecovery(satelliteGateway.name, apiCallLog.callTimeUtc);
   }
   apiCallLog.errorId = errorId;
   apiCallLog.error = await idpApi.getErrorName(errorId);
   if (errorId !== 0) {
-    logger.warn(`API ERROR: ${apiCallLog.error}`);
+    logger.error(`IDP API ERROR: ${apiCallLog.error}`);
+    event.apiError(apiCallLog.operation, apiCallLog.error);
     return false;
   }
   return true;

@@ -3,7 +3,7 @@ const Model = require('./model');
 const category = require('./categories.json').mailbox;
 const crypto = require('../../encryption');
 
-function Mailbox(mailboxId, name, accessId, password, messageGateway, enabled) {
+function Mailbox(mailboxId, name, accessId, password, satelliteGatewayName, enabled) {
   Model.call(this, category);
   if (typeof(mailboxId) === 'string' || typeof(mailboxId) === 'number') {
     this.mailboxId = String(mailboxId);
@@ -16,7 +16,7 @@ function Mailbox(mailboxId, name, accessId, password, messageGateway, enabled) {
   if (typeof(password) === 'string') {
     this.passwordSet(password);
   }
-  this.messageGateway = typeof(messageGateway) === 'string' ? messageGateway : 'Inmarsat';
+  this.satelliteGatewayName = typeof(satelliteGatewayName) === 'string' ? satelliteGatewayName : 'Inmarsat';
   this.enabled = typeof(enabled) === 'boolean' ? enabled : true;
 }
 

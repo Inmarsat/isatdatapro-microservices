@@ -1,5 +1,5 @@
 'use strict';
-const logger = require('../../logger').loggerProxy(__filename);
+const logger = require('../../logging').loggerProxy(__filename);
 const SatelliteGateway = require('../models/satelliteGateway');
 const gatewayCategory = require('../models/categories.json').satelliteGateway;
 
@@ -11,18 +11,18 @@ const gatewayCategory = require('../models/categories.json').satelliteGateway;
 async function getMailboxGateway(dbContext, mailbox) {
   const categoryToFind = gatewayCategory;
   let filter = {
-    name: mailbox.messageGateway,
+    name: mailbox.satelliteGatewayName,
   };
   const findResults = await dbContext.find(categoryToFind, filter);
   if (findResults.length > 0) {
     if (findResults.length > 1) {
-      logger.warn(`Satellite gateway ${mailbox.messageGateway} duplicates found in database`);
+      logger.warn(`Satellite gateway ${mailbox.satelliteGatewayName} duplicates found in database`);
     }
-    const messageGateway = new SatelliteGateway();
-    messageGateway.fromDb(findResults[0]);
-    return messageGateway;
+    const satelliteGateway = new SatelliteGateway();
+    satelliteGateway.fromDb(findResults[0]);
+    return satelliteGateway;
   } else {
-    throw new Error(`Satellite gateway ${mailbox.messageGateway} not found in database`);
+    throw new Error(`Satellite gateway ${mailbox.satelliteGatewayName} not found in database`);
   }
 }
 

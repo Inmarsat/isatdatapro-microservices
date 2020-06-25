@@ -1,6 +1,6 @@
 'use strict';
 
-const logger = require('../infra/logger').loggerProxy(__filename);
+const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
@@ -75,13 +75,10 @@ module.exports = async function(context, req) {
         } else {
           logger.warn(`No submission accepted`);
         }
-      } else {
-        await dbUtilities.handleApiError(apiCallLog);
-        logger.error(`Get forward messages failed with cause ${apiCallLog.error}`);
       }
     })
     .catch(async (err) => {
-      let apiOutage = await dbUtilities.handleApiTimeout(err, idpGateway);
+      let apiOutage = await dbUtilities.handleApiFailure(err, idpGateway);
       if (!apiOutage) {
         logger.error(err);
         throw err;

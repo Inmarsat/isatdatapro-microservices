@@ -1,6 +1,6 @@
 'use strict';
-const dotenv = require('dotenv').config();
-const logger = require('../../logger').loggerProxy(__filename);
+require('dotenv').config();
+const logger = require('../../logging').loggerProxy(__filename);
 const CosmosClient = require('@azure/cosmos').CosmosClient;
 const propertyConversion = require('../utilities/propertyConversion');
 

@@ -1,6 +1,6 @@
 'use strict';
 
-const logger = require('../infra/logger').loggerProxy(__filename);
+const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
@@ -67,14 +67,11 @@ module.exports = async function(context, req) {
         } else {
           logger.warn(`No submission accepted`);
         }
-      } else {
-        await dbUtilities.handleApiError(apiCallLog);
-        logger.error(`Submit message failed with cause ${apiCallLog.error}`);
       }
     })
     .catch(async (err) => {
-      console.log(err);
-      let apiOutage = await dbUtilities.handleApiTimeout(err, idpGateway);
+      logger.error(err);
+      let apiOutage = await dbUtilities.handleApiFailure(err, idpGateway);
       if (!apiOutage) throw err;
     });
     await database.create(apiCallLog.toDb());
@@ -97,7 +94,7 @@ module.exports = async function(context, req) {
         for (key in supportedCommands) {
           helper.push(key);
         }
-        logger.res = {
+        context.res = {
           status: 401,
           body: `Unsupported command ${req.query.cmd}, use: ${helper}`,
         }
@@ -113,13 +110,13 @@ module.exports = async function(context, req) {
           validRequest = true;
           message.payloadJson = payload;
         } else {
-          logger.res = {
+          context.res = {
             status: 402,
             body: `Missing codecServiceId, codecMessageId or fields`,
           };
         }
       } else {
-        logger.res = {
+        context.res = {
           status: 403,
           body: 'Missing payloadRaw or payloadJson',
         };
@@ -132,19 +129,19 @@ module.exports = async function(context, req) {
       }
       // TODO failure/error handling
       let notify = `Submitted message assigned ID ${messageId}`;
-      console.log(notify);
-      logger.res = {
+      logger.info(notify);
+      context.res = {
         status: 200,
         body: notify,
       };
     } else {
-      logger.res = {
+      context.res = {
         status: 400,
         body: "Please pass a Mobile ID and command on the query string, or include the request body"
       };
     }
   } catch (err) {
-    console.log(err.stack);
+    logger.error(err.stack);
     throw err;
   } finally {
     await database.close();

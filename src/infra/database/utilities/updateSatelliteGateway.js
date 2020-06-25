@@ -1,17 +1,17 @@
 'use strict';
-//const logger = require('../../logger').loggerProxy(__filename);
+//const logger = require('../../logging').loggerProxy(__filename);
 const SatelliteGateway = require('../models/satelliteGateway');
 const gatewayCategory = require('../models/categories.json').satelliteGateway;
 
 /**
  * Returns the Mailbox entity for a given Mobile
  * @param {DatabaseContext} database The database context/connection
- * @param {SatelliteGateway} gateway The satellite message gateway
+ * @param {SatelliteGateway} satelliteGateway The satellite message gateway
  * @returns {boolean} true if state changed from prior
  */
-async function updateSatelliteGateway(database, gateway) {
+async function updateSatelliteGateway(database, satelliteGateway) {
   let categoryToFind = gatewayCategory;
-  let filter = { name: gateway.name };
+  let filter = { name: satelliteGateway.name };
   const findGateway = await database.find(categoryToFind, filter);
   if (findGateway.length > 0) {
     let dbGateway = new SatelliteGateway();
@@ -19,8 +19,8 @@ async function updateSatelliteGateway(database, gateway) {
     dbGateway.id = findGateway[0].id;
     if (dbGateway.alive === null) {
       //no state change this is the first update
-    } else if (dbGateway.alive !== gateway.alive) {
-      dbGateway.alive = gateway.alive;
+    } else if (dbGateway.alive !== satelliteGateway.alive) {
+      dbGateway.alive = satelliteGateway.alive;
       dbGateway.aliveChangeTimeUtc = new Date().toISOString();
       let { updatedItem, changeCount } = await database.update(dbGateway.toDb());
       if (changeCount === 0) {
@@ -30,7 +30,7 @@ async function updateSatelliteGateway(database, gateway) {
     }
     return false;
   }
-  throw new Error(`Message Gateway ${gateway.name} not found in database`);
+  throw new Error(`Satellite Gateway ${satelliteGateway.name} not found in database`);
 }
 
 module.exports = updateSatelliteGateway;

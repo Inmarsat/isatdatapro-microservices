@@ -13,14 +13,14 @@ const API_OPERATIONS = [
 /**
  * ApiCallLog Class constructor
  * @param {string} operation The api operation e.g. 'get_return_messages'
- * @param {string} messageGatewayName The name of the message gateway system e.g. 'Inmarsat'
+ * @param {string} satelliteGatewayName The name of the message gateway system e.g. 'Inmarsat'
  * @param {string|number} mailboxId The unique Mailbox ID
  * @param {string} callTimeUtc ISO string value of the call time of the operation
  */
-function ApiCallLog(operation, messageGatewayName, mailboxId, callTimeUtc) {
+function ApiCallLog(operation, satelliteGatewayName, mailboxId, callTimeUtc) {
   Model.call(this, category);
   this.operation = typeof(operation) === 'string' ? operation : null;
-  this.messageGatewayName = typeof(messageGatewayName) === 'string' ? messageGatewayName : null;
+  this.satelliteGatewayName = typeof(satelliteGatewayName) === 'string' ? satelliteGatewayName : null;
   this.mailboxId = typeof(mailboxId) === 'string' ? mailboxId : null;
   this.callTimeUtc = typeof(callTimeUtc) === 'string' ? callTimeUtc : '1970-01-01T00:00:00Z';
   this.completed = false;

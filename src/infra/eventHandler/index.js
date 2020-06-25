@@ -33,18 +33,23 @@ function otherClientForwardSubmission(messageId, mailboxId) {
     + ` ${mailboxId}`);
 }
 
-function apiOutage(satelliteGateway, timestamp, source) {
-  emitter.emit('ApiOutage', satelliteGateway, timestamp,
-    `API Outage detected on ${satelliteGateway} at ${timestamp} (${source})`);
+function apiError(operation, error) {
+  emitter.emit('apiError', operation, error);
 }
 
-function apiRecovery(satelliteGateway, timestamp) {
-  emitter.emit('ApiRecovery', satelliteGateway, timestamp,
-    `API Recovered for ${satelliteGateway} at ${timestamp} (${source})`);
+function apiOutage(satelliteGatewayName, timestamp, source) {
+  emitter.emit('ApiOutage', satelliteGatewayName, timestamp,
+    `API Outage detected on ${satelliteGatewayName} at ${timestamp} (${source})`);
+}
+
+function apiRecovery(satelliteGatewayName, timestamp) {
+  emitter.emit('ApiRecovery', satelliteGatewayName, timestamp,
+    `API Recovered for ${satelliteGatewayName} at ${timestamp} (${source})`);
 }
 
 module.exports = {
   emitter,
+  apiError,
   apiOutage,
   apiRecovery,
   newMobile,

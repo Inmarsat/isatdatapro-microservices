@@ -1,6 +1,6 @@
 'use strict';
 
-const logger = require('../infra/logger').loggerProxy(__filename);
+const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
@@ -56,15 +56,12 @@ module.exports = async function(context, req) {
         } else {
           logger.warn(`No mobiles found for mailbox ${mailbox.mailboxId}`);
         }
-      } else {
-        await dbUtilities.handleApiError(apiCallLog);
-        logger.warn(`Get mobiles paged failed with reason ${apiCallLog.error}`);
       }
     })
     .catch(async (err) => {
       //TODO: handle promise error more elegantly
       // e.g. alert on API non-response or 500
-      let apiOutage = await dbUtilities.handleApiTimeout(err, database, idpGateway);
+      let apiOutage = await dbUtilities.handleApiFailure(err, database, idpGateway);
       if (!apiOutage) {
         logger.error(err);
         throw err;
@@ -89,8 +86,14 @@ module.exports = async function(context, req) {
       }
     }
     let mailboxes = await dbUtilities.getMailboxes(database, filterGateway, filterMailbox);
-    for (let m = 0; m < mailboxes.length; m++) {
-      await getMobiles(mailboxes[m])
+    if (mailboxes instanceof Array) {
+      for (let m = 0; m < mailboxes.length; m++) {
+        await getMobiles(mailboxes[m])
+      }
+    } else if (typeof(mailboxes) !== 'undefined') {
+      await getMobiles(mailboxes);
+    } else {
+      logger.warn(`Mailbox not found matching mailboxId=${filterMailbox} or satelliteGateway=${filterGateway}`);
     }
   } catch (err) {
     logger.error(err.stack);

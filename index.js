@@ -8,7 +8,7 @@ const getMobiles = require('./src/services/getMobiles');
 const messageCodecs = require('./src/infra/messageCodecs');
 
 const eventHandler = require('./src/infra/eventHandler');
-const logger = require('./src/infra/logger');
+const logging = require('./src/infra/logging');
 
 module.exports = {
   getReturnMessages,
@@ -17,5 +17,5 @@ module.exports = {
   getForwardMessages,
   getMobiles,
   eventHandler,
-  logger,
+  logging,
 };
