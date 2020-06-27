@@ -107,9 +107,13 @@ module.exports = async function (context) {
 
   try {
     const mailboxes = await dbUtilities.getMailboxes(database);
-    for (let i = 0; i < mailboxes.length; i++) {
-      let activeMailbox = mailboxes[i];
-      await getMessages(activeMailbox);
+    if (mailboxes.length > 0) {
+      for (let i = 0; i < mailboxes.length; i++) {
+        let activeMailbox = mailboxes[i];
+        await getMessages(activeMailbox);
+      }
+    } else {
+      logger.warn('No enabled Mailboxes found in database');
     }
   } catch (err) {
     switch(err.message) {

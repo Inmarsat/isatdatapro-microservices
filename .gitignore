@@ -3,3 +3,4 @@ node_modules
 logs
 local.settings.json
 _private*
+testMailboxesGateways.js

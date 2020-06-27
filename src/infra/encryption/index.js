@@ -4,8 +4,8 @@ const crypto = require('crypto');
 const algorithmOld = 'aes-256-cbc';
 const algorithm = 'aes-256-ctr';
 const IV_LENGTH = 16;
-const key = process.env.CRYPTO_KEY;
-const cipherMethod = process.env.CIPHER_METHOD || 'deprecated';
+const secret = process.env.CRYPTO_SECRET;
+const key = crypto.createHash('sha256').update(String(secret)).digest('base64').substr(0, 32);
 
 /**
  * Encrypts a string using AES-256
@@ -13,18 +13,14 @@ const cipherMethod = process.env.CIPHER_METHOD || 'deprecated';
  * @returns {string} encrypted text (hex)
  */
 function encrypt(text){
-  if (text.length === 0 || typeof(key) === 'undefined') return text;
-  if (cipherMethod === 'deprecated') {
-    const cipherOld = crypto.createCipher(algorithmOld, key)
-    let encryptedOld = cipherOld.update(text,'utf8','hex')
-    encryptedOld += cipherOld.final('hex');
-    return encryptedOld;
-  }
-  let iv = crypto.randomBytes(IV_LENGTH);
-  const cipher = crypto.createCipheriv(algorithm, Buffer.from(key, 'hex'), iv);
-  let encrypted = cipher.update(text);
-  encrypted = Buffer.concat([encrypted, cipher.final()]);
-  return iv.toString('hex') + ':' + encrypted.toString('hex');
+  if (text.length === 0 || typeof(secret) !== 'string') return text;
+  const keyBytes = Buffer.from(key, 'utf8');
+  const ivBytes = crypto.randomBytes(IV_LENGTH);
+  const ivText = ivBytes.toString('base64');
+  const cipher = crypto.createCipheriv(algorithm, keyBytes, ivBytes);
+  let encrypted = cipher.update(text, 'utf8', 'base64');
+  encrypted += cipher.final('base64');
+  return `${ivText}:${encrypted}`;
 }
  
 /**
@@ -33,19 +29,20 @@ function encrypt(text){
  * @returns {string} decrypted text (utf8)
  */
 function decrypt(text){
-  if (text.length === 0 || typeof(key) === 'undefined') return text;
-  if (cipherMethod === 'deprecated') {
-    const decipherOld = crypto.createDecipher(algorithmOld, key)
-    let decryptedOld = decipherOld.update(text,'hex','utf8')
-    decryptedOld += decipherOld.final('utf8');
-    return decryptedOld;
-  }
-  let textParts = text.split(':');
-  let iv = Buffer.from(textParts.shift(), 'hex');
-  let encryptedText = Buffer.from(textParts.join(':'), 'hex');
-  let decipher = crypto.createDecipheriv(algorithm, Buffer.from(key, 'hex'), iv);
-  let decrypted = decipher.update(encryptedText);
+  if (text.length === 0 || typeof(secret) !== 'string') return text;
+  const [ivText, encrypted] = text.split(':');
+  const keyBytes = Buffer.from(key, 'utf8');
+  const ivBytes = Buffer.from(ivText, 'base64');
+  let decipher = crypto.createDecipheriv(algorithm, keyBytes, ivBytes);
+  let decrypted = String(decipher.update(Buffer.from(encrypted, 'base64')));
   return decrypted;
 }
  
 module.exports = { encrypt, decrypt };
+
+/* SELF-TEST
+const testStr = 'this is a test';
+let encrypted = encrypt(testStr);
+console.log(encrypted);
+console.log(decrypt(encrypted));
+// */

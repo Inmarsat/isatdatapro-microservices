@@ -1,5 +1,5 @@
 /**
- * Loader for utility modules
+ * Loader for database models
  */
 'use strict';
 

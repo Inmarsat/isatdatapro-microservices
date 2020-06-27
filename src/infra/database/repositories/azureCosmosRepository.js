@@ -119,9 +119,10 @@ DatabaseContext.prototype.exists = async function(item, filterOn) {
   for (let prop in filter) {
     if (item.hasOwnProperty(prop) && typeof(filter[prop]) === 'string') {
       try {
-        let isObject = JSON.parse(filter[prop]);
-        logger.warn(`Removing object ${category}.${prop} from exists/find filter`);
-        delete filter[prop];
+        if (typeof(JSON.parse(filter[prop])) === 'object') {
+          logger.warn(`Removing object ${category}.${prop} from exists/find filter`);
+          delete filter[prop];
+        }
       } catch (err) {
         if (err.message.includes('in JSON at position')) {
           //: property remains a filter

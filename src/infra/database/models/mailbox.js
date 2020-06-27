@@ -24,7 +24,7 @@ Mailbox.prototype = Object.create(Model.prototype);
 Mailbox.prototype.constructor = Mailbox;
 
 Mailbox.prototype.passwordSet = async function(password) {
-  this.encrypted_password = crypto.encrypt(password);
+  this.encryptedPassword = crypto.encrypt(password);
 }
 
 Mailbox.prototype.passwordGet = async function() {
