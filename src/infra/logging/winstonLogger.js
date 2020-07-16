@@ -101,9 +101,11 @@ const getModuleName = (caller) => {
 /**
  * Registers a calling module name for the logger as metadata.
  * @param {string} caller The module name invoking the log
+ * @param {string} [component] Optional component name
  */
-const loggerProxy = (caller) => {
+const loggerProxy = (caller, component) => {
   const callerMeta = { module: `${getModuleName(caller)}`};
+  if (component) { callerMeta.component = component }
   const getMeta = (meta) => {
     if (meta instanceof Object && meta !== null) {
       return Object.assign(callerMeta, meta);

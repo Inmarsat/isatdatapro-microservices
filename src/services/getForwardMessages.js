@@ -10,7 +10,7 @@ const Mobile = require('../infra/database/models/mobile');
 //const emitter = require('../infra/eventHandler');
 const event = require('../infra/eventHandler');
 
-module.exports = async function(context, req) {
+module.exports = async function(mailboxId, messageIds) {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
   const callTime = new Date().toISOString();
@@ -21,7 +21,7 @@ module.exports = async function(context, req) {
     const operation = 'getFowardMessages';
     let mailbox;
     if (mailboxId) {
-      mailbox = await dbUtilities.getMailboxes(database, undefined, mailboxId);
+      mailbox = await dbUtilities.getMailboxes(database, undefined, String(mailboxId));
     } else {
       mailbox = await dbUtilities.getStatusMailbox(database, messageId);
     }
@@ -51,12 +51,9 @@ module.exports = async function(context, req) {
             let messageFilter = { messageId: message.messageId };
             let { id, changeList, created } = await database.upsert(message.toDb(), messageFilter);
             if (!created) {
-              let dbMessage = new ForwardMessage();
-              let dbMessageContent = await database.read(id, message.category);
-              dbMessage.fromDb(dbMessageContent);
-              dbMessage.updateNonNull(message);
-              dbMessage.id = id;
-              await database.update(dbMessage.toDb());
+              if (Object.keys(changeList).length > 0) {
+                logger.info(`Updated message ${message.messageId}: ${JSON.stringify(changeList)}`);
+              }
             } else {
               logger.info(`Added forward message ${message.messageId} to database (${id})`);
               event.newForwardMessage(message.messageId, message.mobileId, message.mailboxId);
@@ -88,14 +85,17 @@ module.exports = async function(context, req) {
   }
 
   try {
-    logger.debug(`${thisFunction.name} http triggered at ${callTime}`);
-    if (req.query && req.query.messageId) {
-      await getMessage(req.query.messageId, req.query.mailboxId);
+    logger.debug(`${thisFunction.name} called at ${callTime}`);
+    if (!mailboxId || !messageIds) {
+      throw new Error(`Missing mailboxId or messageIds`)
+    }
+    if (!(messageIds instanceof Array)) {
+      messageIds = [messageIds];
+    }
+    for (let id = 0; id < messageIds.length; id++) {
+      await getMessage(messageIds[id], mailboxId);
     }
   } catch (err) {
-    if (err.message.includes('mobileId unknown')) {
-      logger.warn(`Mobile ID not known for message ${req.query.messageId}`)
-    }
     logger.error(err.stack);
     throw err;
   } finally {

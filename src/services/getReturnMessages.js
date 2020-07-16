@@ -61,6 +61,8 @@ module.exports = async function (context) {
             let message = new ReturnMessage();
             await message.populate(result.messages[m]);
             message.mailboxId = mailbox.mailboxId;
+            message.getCodecServiceId();
+            message.getCodecMessageId();
             // TODO: confirm if payload array/json cause issues
             let messageFilter = { messageId: message.messageId };
             let { id: id1, created: newMessage } = await database.createIfNotExists(message.toDb(), messageFilter);

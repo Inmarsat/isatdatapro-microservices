@@ -189,6 +189,7 @@ DatabaseContext.prototype.read = async function(id, category) {
 
 /**
  * Updates an existing entity in the database
+ * TODO: deprecate, replaced by upsert
  * @param {object} item The item to update (must exist in db)
  * @returns {object} { updatedItem, changeCount }
  */
@@ -223,7 +224,7 @@ DatabaseContext.prototype.update = async function(item) {
  * Null and undefined values are not pushed in an update.
  * If the item includes a timestamp indicated by _utc it will discard update if
  * older than that property in the database entity.
- * @param {object} item The item to update (must exist in db)
+ * @param {object} item The item to upsert
  * @param {object} [filterOn] Optional filter on properties defining "exists"
  * @returns {object} { id, changeCount, created }
  */
@@ -264,6 +265,7 @@ DatabaseContext.prototype.upsert = async function(item, filterOn) {
     const { resource: updatedItem } = await this.container
       .item(id, category)
       .replace(dbItem);
+    // TODO: check which db metadata gets auto-updated e.g. _ts
     logger.debug(`Item ${updatedItem.id} updated ${changeCount} properties`);
   } else {
     logger.debug(`${category} added to database (${id})`);

@@ -34,7 +34,7 @@ function otherClientForwardSubmission(messageId, mailboxId) {
 }
 
 function apiError(operation, error) {
-  emitter.emit('apiError', operation, error);
+  emitter.emit('ApiError', operation, error);
 }
 
 function apiOutage(satelliteGatewayName, timestamp, source) {

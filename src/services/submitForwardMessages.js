@@ -10,13 +10,12 @@ const Mobile = require('../infra/database/models/mobile');
 const supportedCommands = require('../infra/messageCodecs/coreModem').commandMessages;
 const event = require('../infra/eventHandler');
 
-module.exports = async function(context, req) {
+module.exports = async function(mobileId, commandMessage) {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
   const callTime = new Date().toISOString();
   const database = new DatabaseContext();
   await database.initialize();
-  //TODO REMOVE let idpGateway;
 
   /**
    * Submits a single message to a mobile / broadcast group and stores the result
@@ -80,65 +79,25 @@ module.exports = async function(context, req) {
 
   try {
     logger.debug(`${thisFunction.name} http triggered at ${callTime}`);
-    let validRequest = false;
-    let message = new ForwardMessage();
-    if (req.query && req.query.mobileId && req.query.cmd) {
-      //TODO: Untested
-      if (req.query.cmd in supportedCommands) {
-        validRequest = true;
-        message.mobileId = req.query.mobileId;
-        message.payloadJson = supportedCommands(req.query.cmd);
-        if (req.query.userMessageId) message.userMessageId = req.query.userMessageId;
-      } else {
-        let helper = [];
-        for (key in supportedCommands) {
-          helper.push(key);
-        }
-        context.res = {
-          status: 401,
-          body: `Unsupported command ${req.query.cmd}, use: ${helper}`,
-        }
-      }
-    } else if (req.body && req.body.mobileId) {
-      message.mobileId = req.body.mobileId;
-      if (req.body.payloadRaw) {
-        validRequest = true;
-        message.payloadRaw = req.body.payloadRaw;
-      } else if (req.body.payloadJson) {
-        let payload = req.body.payloadJson;
-        if (payload.codecServiceId && payload.codecMessageId && payload.fields) {
-          validRequest = true;
-          message.payloadJson = payload;
-        } else {
-          context.res = {
-            status: 402,
-            body: `Missing codecServiceId, codecMessageId or fields`,
-          };
-        }
-      } else {
-        context.res = {
-          status: 403,
-          body: 'Missing payloadRaw or payloadJson',
-        };
-      }
+    if (!mobileId || !commandMessage) {
+      throw new Error('Invalid arguments');
     }
-    if (validRequest) {
-      let messageId = await submitMessage(message);
-      if (typeof(messageId) === 'undefined') {
-        throw new Error('API did not return messageId');
-      }
-      // TODO failure/error handling
-      let notify = `Submitted message assigned ID ${messageId}`;
-      logger.info(notify);
-      context.res = {
-        status: 200,
-        body: notify,
-      };
+    let message = new ForwardMessage();
+    message.mobileId = mobileId;
+    if (commandMessage in supportedCommands) {
+      message.payloadJson = supportedCommands(commandMessage);
+    } else if (commandMessage.payloadJson) {
+      message.payloadJson = commandMessage.payloadJson;
+    } else if (commandMessage.payloadRaw) {
+      message.payloadRaw = commandMessage.payloadRaw;
     } else {
-      context.res = {
-        status: 400,
-        body: "Please pass a Mobile ID and command on the query string, or include the request body"
-      };
+      throw new Error('Invalid payload definition');
+    }
+    let messageId = await submitMessage(message);
+    if (messageId) {
+      return true;
+    } else {
+      return false;
     }
   } catch (err) {
     logger.error(err.stack);

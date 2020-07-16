@@ -67,7 +67,7 @@ module.exports = async function(context) {
               }
             } else {
               // implies that another API client submitted, trigger event that can get the submission
-              logger.warn(`New Forward message ${message.messageId}from unknown IOP API client`);
+              logger.warn(`New Forward message ${message.messageId} from unknown IDP API client`);
               event.otherClientForwardSubmission(message.messageId, message.mailboxId);
             }
           }

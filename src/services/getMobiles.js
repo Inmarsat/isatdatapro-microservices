@@ -8,7 +8,7 @@ const ApiCallLog = require('../infra/database/models/apiCallLog');
 const Mobile = require('../infra/database/models/mobile');
 const event = require('../infra/eventHandler');
 
-module.exports = async function(context, req) {
+module.exports = async function(satelliteGatewayName, mailboxId) {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
   const callTime = new Date().toISOString();
@@ -74,8 +74,9 @@ module.exports = async function(context, req) {
   }
 
   try {
-    logger.info(`${thisFunction.name} http triggered at ${callTime}`);
+    logger.info(`${thisFunction.name} called at ${callTime}`);
     // TODO: first filter on mailbox then on gateway
+    /*
     let filterMailbox;
     let filterGateway;
     if (req.query) {
@@ -84,8 +85,8 @@ module.exports = async function(context, req) {
       } else if (req.query.gateway) {
         filterGateway = req.query.gateway;
       }
-    }
-    let mailboxes = await dbUtilities.getMailboxes(database, filterGateway, filterMailbox);
+    }*/
+    let mailboxes = await dbUtilities.getMailboxes(database, satelliteGatewayName, mailboxId);
     if (mailboxes instanceof Array) {
       for (let m = 0; m < mailboxes.length; m++) {
         await getMobiles(mailboxes[m])
