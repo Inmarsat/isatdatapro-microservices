@@ -49,7 +49,7 @@ module.exports = async function(mobileId, commandMessage) {
               let { id: id, created: newMessage } = await database.createIfNotExists(message.toDb(), messageFilter);
               if (newMessage) {
                 logger.debug(`Added forward message ${message.messageId} to database (${id})`);
-                event.newForwardMessage(message.messageId, message.mobileId, message.mailboxId, operation);
+                event.newForwardMessage(message);
                 let mobile = new Mobile();
                 mobile.mobileId = message.mobileId;
                 mobile.mailboxId = mailbox.mailboxId;
@@ -58,7 +58,7 @@ module.exports = async function(mobileId, commandMessage) {
                 let { id: id1, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
                 if (newMobile) {
                   logger.debug(`Mobile ${mobile.mobileId} added to database (${id1})`);
-                  event.newMobile(mobile.mobileId, mobile.mailboxId, operation);
+                  event.newMobile(mobile);
                 }
               }
             }

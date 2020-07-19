@@ -4,22 +4,19 @@
 'use strict';
 
 const { EventEmitter } = require('events');
-const { emit } = require('process');
+//const { emit } = require('process');
 const emitter = new EventEmitter();
 
-function newMobile(mobileId, mailboxId, source) {
-  emitter.emit('NewMobile', mobileId, mailboxId,
-    `New mobile identified by ${source}`);
+function newMobile(mobile) {
+  emitter.emit('NewMobile', mobile);
 }
 
-function newReturnMessage(messageId, mobileId, mailboxId, source) {
-  emitter.emit('NewReturnMessage', messageId, mobileId, mailboxId,
-    `New return message ${messageId} identified by ${source}`);
+function newReturnMessage(message) {
+  emitter.emit('NewReturnMessage', message);
 }
 
-function newForwardMessage(messageId, mobileId, mailboxId, source) {
-  emitter.emit('NewForwardMessage', messageId, mobileId, mailboxId,
-    `New forward message ${messageId} submitted to ${mobileId} (${source})`);
+function newForwardMessage(message) {
+  emitter.emit('NewForwardMessage', message);
 }
 
 function forwardMessageStateChange(messageId, mobileId, newState) {

@@ -56,7 +56,7 @@ module.exports = async function(mailboxId, messageIds) {
               }
             } else {
               logger.info(`Added forward message ${message.messageId} to database (${id})`);
-              event.newForwardMessage(message.messageId, message.mobileId, message.mailboxId);
+              event.newForwardMessage(message);
               let mobile = new Mobile();
               mobile.mobileId = message.mobileId;
               mobile.mailboxId = mailbox.mailboxId;
@@ -65,7 +65,7 @@ module.exports = async function(mailboxId, messageIds) {
               let { id: itemId, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
               if (newMobile) {
                 logger.info(`Mobile ${mobile.mobileId} added to database (${itemId})`);
-                event.newMobile(mobile.mobileId, mobile.mailboxId, operation);
+                event.newMobile(mobile);
               }
             }
           }

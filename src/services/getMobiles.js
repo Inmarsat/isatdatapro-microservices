@@ -50,7 +50,7 @@ module.exports = async function(satelliteGatewayName, mailboxId) {
               logger.debug(`Updating mobile ${mobile.mobileId} (${id})`);
             } else {
               logger.debug(`Added mobile ${mobile.mobileId} to database (${id})`);
-              event.newMobile(mobile.mobileId, mobile.mailboxId, operation);
+              event.newMobile(mobile);
             }
           }
         } else {

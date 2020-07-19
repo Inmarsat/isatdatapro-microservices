@@ -68,7 +68,7 @@ module.exports = async function (context) {
             let { id: id1, created: newMessage } = await database.createIfNotExists(message.toDb(), messageFilter);
             if (newMessage) {
               logger.debug(`Added return message ${message.messageId} to database (${id1})`);
-              event.newReturnMessage(message.messageId, message.mobileId, message.mailboxId, operation);
+              event.newReturnMessage(message);
               let mobile = new Mobile();
               mobile.mobileId = message.mobileId;
               mobile.mailboxId = mailbox.mailboxId;
@@ -78,7 +78,7 @@ module.exports = async function (context) {
               let { id: id2, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
               if (newMobile) {
                 logger.debug(`Mobile ${mobile.mobileId} added to database (${id2})`);
-                event.newMobile(mobile.mobileId, mobile.mailboxId, operation);
+                event.newMobile(mobile);
               }
             } else {
               logger.warn(`Retrieved message ${message.messageId} already in database`);
