@@ -41,8 +41,8 @@ module.exports = async function(mailboxId, messageIds) {
           for (let m = 0; m < result.messages.length; m++) {
             let message = new ForwardMessage();
             await message.populate(result.messages[m]);
-            message.getCodecServiceId();
-            message.getCodecMessageId();
+            //message.codecServiceId = message.getCodecServiceId();
+            message.codecMessageId = message.getCodecMessageId();
             message.mailboxId = mailbox.mailboxId;
             // TODO: ensure this covers all cases doesn't lose important data
             if (message.errorId !== 0) {
