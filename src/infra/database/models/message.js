@@ -23,7 +23,7 @@ Message.prototype.constructor = Message;
  * Returns the codecServiceId (aka SIN) of the message
  * @returns {number} 0..255
  */
-Message.prototype.getCodecServiceId = async function() {
+Message.prototype.getCodecServiceId = function() {
   if (this.payloadJson) {
     return this.payloadJson.codecServiceId;
   } else if (this.payloadRaw && this.payloadRaw.length > 0) {
@@ -37,7 +37,7 @@ Message.prototype.getCodecServiceId = async function() {
  * Returns the codecMessageId (aka MIN) of the message
  * @returns {number} 0..255
  */
-Message.prototype.getCodecMessageId = async function() {
+Message.prototype.getCodecMessageId = function() {
   if (this.payloadJson) {
     return this.payloadJson.codecMessageId;
   } else if (this.payloadRaw && this.payloadRaw.length > 1) {
