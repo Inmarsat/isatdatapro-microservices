@@ -6,6 +6,7 @@ const Mobile = require('../database/models/mobile');
 const { Payload, Field } = require('../database/models/messagePayloadJson');
 const ReturnMessage = require('../database/models/messageReturn');
 const ForwardMessage = require('../database/models/messageForward');
+const parseFieldValue = require('./commonMessageFormat');
 const event = require('../eventHandler');
 
 /**
@@ -38,6 +39,7 @@ function timestampFromMinuteDay(year, month, dayOfMonth, minuteOfDay) {
  * Returns the interpreted value of the field based on dataType
  * @param {object} field A payload field { name, value, dataType }
  */
+/*
 function parseFieldValue(field) {
   if (!field.dataType) return field.stringValue;
   switch (field.dataType) {
@@ -66,6 +68,7 @@ function parseFieldValue(field) {
       return field.stringValue;
   }
 }
+*/
 
 /**
  * Sets up mobile metadata template for update
@@ -94,13 +97,9 @@ function handleUnknownField(fieldName, messageId) {
   logger.warn(`Unknown field ${fieldName} in message ${messageId}`);
 }
 
-function Event(type, detail) {
-  this.type = type;
-  this.detail = detail;
-}
-
 /**
  * Parses Inmarsat-defined standard modem Mobile-Originated messages
+ * and emits various events
  * @public
  * @param {MessageReturn} message The message with metadata
  * @param {DatabaseContext} database The database connection
@@ -204,6 +203,16 @@ function parseModemRegistration(message) {
   mobile.version.hardware = `${tmp.hwMajor}.${tmp.hwMinor}`;
   mobile.version.firmware = `${tmp.fwMajor}.${tmp.fwMinor}`;
   mobile.version.productId = `${tmp.productId}`;
+  switch (message.codecMessageId) {
+    case 0:
+      event.modemRegistration(mobile);
+      break;
+    case 1:
+      event.modemBeamSwitch(mobile);
+      break;
+    default:
+      event.modemConfigReply(mobile);
+  }
   event.modemRegistration(mobile);
   return mobile;
 }
@@ -582,7 +591,6 @@ function pingTime(timestamp) {
  * Parses a ping response to update the IdpMobiles collection metadata
  * @private
  * @param {ReturnMessage} message The return message
- * @returns {Event} event details
  */
 function parseModemPingReply(message) {
   let latency = {};

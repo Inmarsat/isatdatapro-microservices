@@ -41,6 +41,12 @@ module.exports = {
   modemRegistration: (mobile) => {
     emitter.emit('ModemRegistration', mobile);
   },
+  modemBeamSwitch: (mobile) => {
+    emitter.emit('ModemBeamSwitch', mobile);
+  },
+  modemConfigReply: (mobile) => {
+    emitter.emit('ModemConfigReply', mobile);
+  },
   modemProtocolError: (detail) => {
     emitter.emit('ModemProtocolError', detail);
   },
