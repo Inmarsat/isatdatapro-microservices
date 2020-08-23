@@ -17,7 +17,7 @@ function Mobile(mobileId, description, mailboxId) {
   this.version = {
     hardware: '0.0.0',
     firmware: '0.0.0',
-    product_id: '0',
+    productId: '0',
   };
   this.location = {
     latitude: 90.0,

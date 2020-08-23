@@ -6,6 +6,7 @@ const Mobile = require('../database/models/mobile');
 const { Payload, Field } = require('../database/models/messagePayloadJson');
 const ReturnMessage = require('../database/models/messageReturn');
 const ForwardMessage = require('../database/models/messageForward');
+const event = require('../eventHandler');
 
 /**
  * Rounds a number to a certain decimal precision
@@ -38,18 +39,18 @@ function timestampFromMinuteDay(year, month, dayOfMonth, minuteOfDay) {
  * @param {object} field A payload field { name, value, dataType }
  */
 function parseFieldValue(field) {
-  if (!field.dataType) return field.value;
+  if (!field.dataType) return field.stringValue;
   switch (field.dataType) {
     case 'boolean':
-      return Boolean(field.value);
+      return Boolean(field.stringValue);
     case 'signedint':
     case 'unsignedint':
-      return Number(field.value);
+      return Number(field.stringValue);
     case 'data':
-      return Buffer.from(field.value, 'base64');
+      return Buffer.from(field.stringValue, 'base64');
     case 'array':
       let items = [];
-      field.elements.forEach(element => {
+      field.arrayElements.forEach(element => {
         let item = {};
         element.fields.forEach(field => {
           item.name = field.name;
@@ -62,7 +63,7 @@ function parseFieldValue(field) {
       //TODO: lookup from message definition file?
     case 'string':
     default:
-      return field.value;
+      return field.stringValue;
   }
 }
 
@@ -103,54 +104,45 @@ function Event(type, detail) {
  * @public
  * @param {MessageReturn} message The message with metadata
  * @param {DatabaseContext} database The database connection
- * @returns {Object} {Mobile, [Event]}
+ * @returns {Object} mobile metadata
  */
 function parseCoreModem(message, database) {
   if (!message.payloadJson || message.codecServiceId !== 0) {
     throw new Error(`Attempt to parse message ${message.messageId} as core modem`);
   }
-  let mobile = null;
-  let event = null;
-  switch (message.payloadJson.codecMessageId) {
+  const messageType = message.payloadJson.codecMessageId;
+  switch (messageType) {
     case 97:
     case 1:
     case 0:
-      ({ mobile, event } = parseModemRegistration(message));
-      break;
+      return parseModemRegistration(message);
     case 2:
-      event = parseModemProtocolError(message);
+      parseModemProtocolError(message);
       break;
     case 70:
-      ({ mobile, event } = parseModemSleepSchedule(message));
-      break;
+      return parseModemSleepSchedule(message);
     case 72:
-      mobile = parseModemLocation(message);
-      break;
+      return parseModemLocation(message);
     case 98:
-      event = parseModemLastRxInfo(message);
+      parseModemLastRxInfo(message);
       break;
     case 99:
-      event = parseModemRxMetrics(message);
+      parseModemRxMetrics(message);
       break;
     case 100:
-      event = parseModemTxMetrics(message);
+      parseModemTxMetrics(message);
       break;
     case 112:
-      ({ mobile, event } = parseModemPingReply(message));
+      parseModemPingReply(message);
       break;
     case 113:
-      ({ mobile, event } = parseNetworkPingRequest(message));
+      parseNetworkPingRequest(message);
       break;
     case 115:
-      ({ mobile, event } = parseModemBroadcastIds(message));
-      if (typeof(mobile) === 'undefined' || typeof(event) === 'undefined') {
-        logger.error(`WTF why isn't broadcast parsing working like the others`);
-      }
-      break;
+      return parseModemBroadcastIds(message);
     default:
-      logger.warn(`No parsing logic defined for SIN 0 MIN ${message.payloadJson.codecMessageId}`);
+      logger.warn(`No parsing logic defined for SIN 0 MIN ${messageType}`);
   }
-  return { mobile: mobile, event: event };
 }
 
 /**
@@ -162,7 +154,6 @@ function parseCoreModem(message, database) {
  */
 function parseModemRegistration(message) {
   let mobile = populateMobile(message);
-  let event = null;
   mobile.lastRegistrationTimeUtc = message.receiveTimeUtc;
   let tmp = {};
   message.payloadJson.fields.forEach((field) => {
@@ -213,20 +204,20 @@ function parseModemRegistration(message) {
   mobile.version.hardware = `${tmp.hwMajor}.${tmp.hwMinor}`;
   mobile.version.firmware = `${tmp.fwMajor}.${tmp.fwMinor}`;
   mobile.version.productId = `${tmp.productId}`;
-  if (message.payloadJson.codecMessageId === 0) {
-    event = new Event('MobileRegistration', `New registration from ${mobile.mobileId}`);
-  }
-  return { mobile, event };
+  event.modemRegistration(mobile);
+  return mobile;
 }
 
 /**
  * Parses the modem error message
  * @private
  * @param {MessageReturn} message The return message
- * @returns {Event} event with error detail
  */
 function parseModemProtocolError(message) {
   let error = {
+    mobileId: message.mobileId,
+    messageId: message.messageId,
+    timestamp: message.receiveTimeUtc,
     messageReference: null,
     errorCode: null,
     errorInfo: null,
@@ -246,8 +237,8 @@ function parseModemProtocolError(message) {
         logger.warn(`Unknown field ${field.name} in ${message.name}`);
     }
   });
-  let eventDetail = `Message ${message.messageId} error: ${JSON.stringify(error)}`;
-  return new Event('ModemProtocolError', eventDetail);
+  event.modemProtocolError(error);
+  return error;
 }
 
 /**
@@ -312,11 +303,7 @@ function getWakeupSeconds(wakeupCode) {
  */
 function parseModemSleepSchedule(message) {
   let mobile = populateMobile(message);
-  let eventDetail = {
-    mobileWakepPeriod: null,
-    localInitiated: null,
-    messageReference: null,
-  };
+  let eventDetail = {};
   message.payloadJson.fields.forEach(field => {
     switch (field.name) {
       case 'wakeupPeriod':
@@ -334,8 +321,8 @@ function parseModemSleepSchedule(message) {
         handleUnknownField(field.name, message.messageId);
     }
   });
-  let event = new Event('MobileWakeupPeriodChanged', `${JSON.stringify(eventDetail)}`);
-  return { mobile, event };
+  event.modemWakeupPeriodChange(eventDetail);
+  return mobile;
 }
 
 /**
@@ -379,7 +366,6 @@ function parseModemLocation(message) {
  * Parses response to query for last receive information
  * @private
  * @param {ReturnMessage} message The lastRxInfo message
- * @returns {Event} event detail
  */
 function parseModemLastRxInfo(message) {
   let eventDetail = {};
@@ -404,7 +390,7 @@ function parseModemLastRxInfo(message) {
         handleUnknownField(field.name, message.messageId);
     }
   });
-  return new Event('ModemLastRxInfoResponse', `${JSON.stringify(eventDetail)}`);
+  event.modemLastRxInfoResponse(eventDetail);
 }
 
 const METRICS_PERIODS = {
@@ -473,7 +459,6 @@ function getMetricsPeriod(periodCode) {
  * @private
  * @param {ReturnMessage} message The message
  * @param {MessageMetadata} meta Metadata including mobileId, timestamp, [topic]
- * @returns {Event} event details
  */
 function parseModemRxMetrics(message) {
   let eventDetail = {};
@@ -500,14 +485,13 @@ function parseModemRxMetrics(message) {
         handleUnknownField(field.name, message.messageId);
     }
   });
-  return new Event('ModemRxMetricsReply', `${JSON.stringify(eventDetail)}`);
+  event.modemRxMetricsReply(eventDetail);
 }
 
 /**
  * Parses response to get transmit metrics
  * @private
  * @param {ReturnMessage} message The return message
- * @returns {Event} event details
  */
 function parseModemTxMetrics(message) {
   let eventDetails = {};
@@ -575,7 +559,7 @@ function parseModemTxMetrics(message) {
       eventDetails.txMetrics.push(metric);
     }
   }
-  return new Event('ModemTxMetricsReply', `${JSON.stringify(eventDetails)}`);
+  event.modemTxMetricsReply(eventDetails);
 }
 
 /**
@@ -601,7 +585,6 @@ function pingTime(timestamp) {
  * @returns {Event} event details
  */
 function parseModemPingReply(message) {
-  let mobile = populateMobile(message);
   let latency = {};
   let requestTime, responseTime;
   let receiveTime = pingTime(message.receiveTimeUtc);
@@ -634,18 +617,15 @@ function parseModemPingReply(message) {
     receiveTime: receiveTime,
     latency: latency,
   };
-  let event = new Event('ModemPingReply', `${JSON.stringify(eventDetails)}`);
-  return { mobile, event };
+  event.modemPingReply(eventDetails);
 }
 
 /**
  * Parses request from modem for network ping response (note: response is automatically generated by the network)
  * @private
  * @param {ReturnMessage} message The return message
- * @returns {Event} event details
  */
 function parseNetworkPingRequest(message) {
-  let mobile = populateMobile(message);
   let eventDetail = {};
   let requestTime;
   const receiveTime = pingTime(message.receiveTimeUtc);
@@ -659,8 +639,7 @@ function parseNetworkPingRequest(message) {
         handleUnknownField(field.name, message.messageId);
     }
   });
-  let event = new Event('ModemNetworkPingRequest', `${JSON.stringify(eventDetail)}`);
-  return { mobile, event };
+  event.networkPingRequest(eventDetail);
 }
 
 /**
@@ -669,14 +648,17 @@ function parseNetworkPingRequest(message) {
  * @param {ReturnMessage} message The return message
  * @returns {Mobile} Mobile metadata
  */
-async function parseModemBroadcastIds(message) {
+function parseModemBroadcastIds(message) {
   try {
     let mobile = populateMobile(message);
+    mobile.broadcastIds = [];
     message.payloadJson.fields.forEach(field => {
       switch (field.name) {
         case 'broadcastIDs':
-          parseFieldValue(field).forEach(broadcastId => {
-            mobile.broadcastIds.push(broadcastId.value);
+          parseFieldValue(field).forEach(entry => {
+            if (entry.value !== 0) {
+              mobile.broadcastIds.push(entry.value);
+            }
           });
           break;
         default:
@@ -684,8 +666,8 @@ async function parseModemBroadcastIds(message) {
       }
     });
     mobile.broadcastIdCount = mobile.broadcastIds.length;
-    let event = new Event('BroadcastIdResponse', `Mobile ${mobile.mobileId}`);
-    return { mobile, event };
+    event.broadcastIdResponse(mobile.mobileId, mobile.broadcastIds);
+    return mobile;
   } catch (e) {
     logger.error(e);
   }
@@ -871,7 +853,8 @@ function commandGetBroadcastIds() {
 
 module.exports = {
   codecServiceId,
-  parseCoreModem,
+  //parseCoreModem,
+  parse: parseCoreModem,
   commandMessages: {
     reset: commandReset,
     setWakeupPeriod: commandSetMobileWakeupPeriod,

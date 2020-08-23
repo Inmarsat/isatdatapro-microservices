@@ -9,19 +9,17 @@ const ApiCallLog = require('../infra/database/models/apiCallLog');
 const ReturnMessage = require('../infra/database/models/messageReturn');
 const Mobile = require('../infra/database/models/mobile');
 const event = require('../infra/eventHandler');
+const parseModemMeta = require('../infra/messageCodecs/coreModem').parse;
 
 /**
  * Fetches new mobile-originated messages, stores by unique ID and puts
  * API metadata in the database for use as high water mark
- * @param {object} context Optional context input e.g. Azure Function App
  */
-module.exports = async function (context) {
+module.exports = async function () {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
-  const callTime = new Date().toISOString();
   const database = new DatabaseContext();
   await database.initialize();
-  // TODO: REMOVE let idpGateway;
 
   /**
    * Retreives Mobile-Originated messages and stores unique ones in a database
@@ -74,6 +72,11 @@ module.exports = async function (context) {
               mobile.mailboxId = mailbox.mailboxId;
               mobile.satelliteRegion = message.satelliteRegion;
               mobile.lastMessageReceivedTimeUtc = message.receiveTimeUtc;
+              if (message.payloadJson 
+                  && message.payloadJson.codecServiceId === 0) {
+                const mobileMeta = parseModemMeta(message);
+                Object.assign(mobile, mobileMeta);
+              }
               let mobileFilter = { mobileId: message.mobileId };
               let { id: id2, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
               if (newMobile) {
