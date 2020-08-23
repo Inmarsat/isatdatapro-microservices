@@ -21,7 +21,7 @@ module.exports = async function(satelliteGatewayName, mailboxId) {
     const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
-      password: await mailbox.passwordGet(),
+      password: mailbox.passwordGet(),
     };
     let filter = { pageSize: MAX_MOBILES };
     if (nextMobileId) { filter.mobileId = nextMobileId }

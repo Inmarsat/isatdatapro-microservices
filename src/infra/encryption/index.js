@@ -1,19 +1,19 @@
 'use strict';
 require('dotenv').config();
 const crypto = require('crypto');
-const algorithmOld = 'aes-256-cbc';
 const algorithm = 'aes-256-ctr';
 const IV_LENGTH = 16;
-const secret = process.env.CRYPTO_SECRET;
-const key = crypto.createHash('sha256').update(String(secret)).digest('base64').substr(0, 32);
+//const secret = process.env.CRYPTO_SECRET;
 
 /**
  * Encrypts a string using AES-256
  * @param {string} text The text to encrypt
  * @returns {string} encrypted text (hex)
  */
-function encrypt(text){
+function encrypt(text, secret){
+  if (typeof(secret) === 'undefined') secret = process.env.MAILBOX_SECRET;
   if (text.length === 0 || typeof(secret) !== 'string') return text;
+  const key = crypto.createHash('sha256').update(String(secret)).digest('base64').substr(0, 32);
   const keyBytes = Buffer.from(key, 'utf8');
   const ivBytes = crypto.randomBytes(IV_LENGTH);
   const ivText = ivBytes.toString('base64');
@@ -28,8 +28,10 @@ function encrypt(text){
  * @param {string} text The text to decrypt
  * @returns {string} decrypted text (utf8)
  */
-function decrypt(text){
+function decrypt(text, secret){
+  if (typeof(secret) === 'undefined') secret = process.env.MAILBOX_SECRET;
   if (text.length === 0 || typeof(secret) !== 'string') return text;
+  const key = crypto.createHash('sha256').update(String(secret)).digest('base64').substr(0, 32);
   const [ivText, encrypted] = text.split(':');
   const keyBytes = Buffer.from(key, 'utf8');
   const ivBytes = Buffer.from(ivText, 'base64');

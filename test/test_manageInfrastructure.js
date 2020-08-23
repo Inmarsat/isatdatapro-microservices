@@ -18,4 +18,4 @@ async function testManage() {
 
 const testInfra = require('./testMailboxesGateways');
 
-testManage();
+//testManage();

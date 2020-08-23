@@ -28,7 +28,7 @@ module.exports = async function(mailboxId, messageIds) {
     const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
-      password: await mailbox.passwordGet(),
+      password: mailbox.passwordGet(),
     };
     const callTimeUtc = new Date().toISOString();
     let apiCallLog = new ApiCallLog(operation, idpGateway.name, mailbox.mailboxId, callTimeUtc);

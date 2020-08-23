@@ -25,7 +25,7 @@ module.exports = async function(context) {
     const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
-      password: await mailbox.passwordGet(),
+      password: mailbox.passwordGet(),
     };
     if (!filter) {
       filter = await dbUtilities.getHighwatermark(database, mailbox.mailboxId, operation);

@@ -23,11 +23,11 @@ function Mailbox(mailboxId, name, accessId, password, satelliteGatewayName, enab
 Mailbox.prototype = Object.create(Model.prototype);
 Mailbox.prototype.constructor = Mailbox;
 
-Mailbox.prototype.passwordSet = async function(password) {
+Mailbox.prototype.passwordSet = function(password) {
   this.encryptedPassword = crypto.encrypt(password);
 }
 
-Mailbox.prototype.passwordGet = async function() {
+Mailbox.prototype.passwordGet = function() {
   return crypto.decrypt(this.encryptedPassword);
 }
 
