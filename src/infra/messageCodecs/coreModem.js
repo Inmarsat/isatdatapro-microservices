@@ -6,7 +6,7 @@ const Mobile = require('../database/models/mobile');
 const { Payload, Field } = require('../database/models/messagePayloadJson');
 const ReturnMessage = require('../database/models/messageReturn');
 const ForwardMessage = require('../database/models/messageForward');
-const parseFieldValue = require('./commonMessageFormat');
+const { parseFieldValue } = require('./commonMessageFormat');
 const event = require('../eventHandler');
 
 /**

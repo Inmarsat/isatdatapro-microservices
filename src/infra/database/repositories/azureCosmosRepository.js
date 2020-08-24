@@ -10,16 +10,30 @@ const databaseId = process.env.DB_NAME;
 const containerId = process.env.DB_CONTAINER;
 const partitionKey = { "kind": "Hash", "paths": [`/${process.env.DB_PARTITION}`] };
 const throughput = process.env.DB_THROUGHPUT;
+const dbConfig = {
+  endpoint: endpoint,
+  key: key,
+  databaseId: databaseId,
+  containerId: containerId,
+  partitionKey: partitionKey,
+  throughput: throughput,
+};
 
-
+/**
+ * Constructor
+ */
 function DatabaseContext() {
   this.type = 'CosmosDB';
   this.connection = new CosmosClient({ endpoint, key });
   this.isInitialized = false;
 }
 
+/**
+ * Initializes the database if/as required
+ */
 DatabaseContext.prototype.initialize = async function() {
   try {
+    //logger.debug(`Initializing database with ${JSON.stringify(dbConfig)}`);
     const databaseResponse = await this.connection.databases
       .createIfNotExists({ id: databaseId });
     if (databaseResponse.statusCode === 201) {
