@@ -7,10 +7,21 @@ const testSubmitForward = async(mobileId, message) => {
     events.addListener('NewMobile', (detail) => {
       console.log('New Mobile found: ' + detail);
     });
-    await submitMessage(mobileId, { payloadRaw: message });
+    let submission;
+    if (message instanceof Array) {
+      submission = { payloadRaw: message };
+    } else if (typeof message === 'object') {
+      submission = message;
+    }
+    await submitMessage(mobileId, submission);
   } catch (err) {
     console.log(err);
   }
 };
 
-testSubmitForward(testDevice, [0, 72]);
+//testSubmitForward(testDevice, [0, 72]);
+const testCommand = {
+  command: 'ping',
+  params: null,
+};
+//testSubmitForward(testDevice, testCommand);

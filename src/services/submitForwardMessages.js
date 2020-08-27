@@ -78,15 +78,18 @@ module.exports = async function(mobileId, commandMessage) {
   }
 
   try {
-    logger.debug(`${thisFunction.name} http triggered at ${callTime}`);
+    logger.debug(`${thisFunction.name} called at ${callTime}`);
     if (!mobileId || !commandMessage) {
       throw new Error('Invalid arguments');
     }
     let message = new ForwardMessage();
     message.mobileId = mobileId;
-    if (commandMessage in supportedCommands) {
-      message.payloadJson = supportedCommands(commandMessage);
+    if (commandMessage.command && commandMessage.command in supportedCommands) {
+      const command = commandMessage.command;
+      const params = commandMessage.params;
+      message.payloadJson = supportedCommands[command](params);
     } else if (commandMessage.payloadJson) {
+      //TODO: validate payload structure
       message.payloadJson = commandMessage.payloadJson;
     } else if (commandMessage.payloadRaw) {
       message.payloadRaw = commandMessage.payloadRaw;
