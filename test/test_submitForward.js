@@ -10,8 +10,12 @@ const testSubmitForward = async(mobileId, message) => {
     let submission;
     if (message instanceof Array) {
       submission = { payloadRaw: message };
-    } else if (typeof message === 'object') {
-      submission = message;
+    } else if (typeof message === 'object' && 'command' in message) {
+      if ('command' in message) {
+        submission = { modemCommand: message };
+      } else {
+        submission = { payloadJson: message };
+      }
     }
     await submitMessage(mobileId, submission);
   } catch (err) {
@@ -20,8 +24,8 @@ const testSubmitForward = async(mobileId, message) => {
 };
 
 //testSubmitForward(testDevice, [0, 72]);
-const testCommand = {
+const modemCommand = {
   command: 'ping',
   params: null,
 };
-//testSubmitForward(testDevice, testCommand);
+testSubmitForward(testDevice, modemCommand);

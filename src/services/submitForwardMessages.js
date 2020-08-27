@@ -84,10 +84,14 @@ module.exports = async function(mobileId, commandMessage) {
     }
     let message = new ForwardMessage();
     message.mobileId = mobileId;
-    if (commandMessage.command && commandMessage.command in supportedCommands) {
-      const command = commandMessage.command;
-      const params = commandMessage.params;
-      message.payloadJson = supportedCommands[command](params);
+    if (commandMessage.modemCommand) {
+      if (commandMessage.modemCommand.command in supportedCommands) {
+        const command = commandMessage.modemCommand.command;
+        const params = commandMessage.modemCommand.params;
+        message.payloadJson = supportedCommands[command](params);
+      } else {
+        throw new Error(`Unsupported modem command: ${commandMessage.modemCommand}`);
+      }
     } else if (commandMessage.payloadJson) {
       //TODO: validate payload structure
       message.payloadJson = commandMessage.payloadJson;
