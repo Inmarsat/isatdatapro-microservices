@@ -1,5 +1,5 @@
 'use strict';
-const Model = require('./model');
+const Model = require('./Model');
 const category = require('./categories.json').mailbox;
 const crypto = require('../../encryption');
 

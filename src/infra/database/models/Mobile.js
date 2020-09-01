@@ -1,5 +1,5 @@
 'use strict';
-const Model = require('./model');
+const Model = require('./Model');
 const category = require('./categories.json').mobile;
 
 function Mobile(mobileId, description, mailboxId) {

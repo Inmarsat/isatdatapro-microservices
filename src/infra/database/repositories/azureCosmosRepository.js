@@ -1,6 +1,8 @@
 'use strict';
 require('dotenv').config();
 const logger = require('../../logging').loggerProxy(__filename);
+//TODO: migrate toDb and fromDb operations from model into repository
+const models = require('../models');
 const CosmosClient = require('@azure/cosmos').CosmosClient;
 const propertyConversion = require('../utilities/propertyConversion');
 

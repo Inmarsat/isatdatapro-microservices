@@ -2,7 +2,7 @@
 
 const logger = require('../infra/logging').loggerProxy(__filename);
 const DatabaseContext = require('../infra/database/repositories');
-const Mailbox = require('../infra/database/models/mailbox');
+const Mailbox = require('../infra/database/models/Mailbox');
 
 /**
  * Adds a mailbox or updates existing mailbox parameters

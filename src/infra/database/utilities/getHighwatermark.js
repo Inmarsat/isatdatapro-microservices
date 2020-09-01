@@ -1,6 +1,6 @@
 'use strict';
 const logger = require('../../logging').loggerProxy(__filename);
-const ApiCallLog = require('../models/apiCallLog');
+const ApiCallLog = require('../models/ApiCallLog');
 const apiCallLogCategory = require('../models/categories.json').apiCallLog;
 const propertyConversion = require('./propertyConversion');
 

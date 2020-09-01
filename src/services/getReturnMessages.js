@@ -5,9 +5,7 @@ const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
-const ApiCallLog = require('../infra/database/models/apiCallLog');
-const ReturnMessage = require('../infra/database/models/messageReturn');
-const Mobile = require('../infra/database/models/mobile');
+const { ApiCallLog, MessageReturn, Mobile } = require('../infra/database/models');
 const event = require('../infra/eventHandler');
 const parseModemMeta = require('../infra/messageCodecs/coreModem').parse;
 
@@ -56,7 +54,7 @@ module.exports = async function () {
           logger.info(`Retrieved ${result.messages.length} messages from mailbox ${mailbox.mailboxId}`);
           apiCallLog.messageCount = result.messages.length;
           for (let m = 0; m < result.messages.length; m++) {
-            let message = new ReturnMessage();
+            let message = new MessageReturn();
             await message.populate(result.messages[m]);
             message.mailboxId = mailbox.mailboxId;
             //message.codecServiceId = message.getCodecServiceId();

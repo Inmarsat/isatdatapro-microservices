@@ -1,6 +1,6 @@
 'use strict';
 //const logger = require('../../logging').loggerProxy(__filename);
-const Mailbox = require('../models/mailbox');
+const Mailbox = require('../models/Mailbox');
 const mailboxCategory = require('../models/categories.json').mailbox;
 const propertyConversion = require('./propertyConversion');
 

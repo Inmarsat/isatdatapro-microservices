@@ -1,7 +1,7 @@
 'use strict';
 //const logger = require('../../logging').loggerProxy(__filename);
-const Mobile = require('../models/mobile');
-const ForwardMessage = require('../models/messageForward');
+const Mobile = require('../models/Mobile');
+const ForwardMessage = require('../models/MessageForward');
 const propertyConversion = require('./propertyConversion');
 const getMobileMailbox = require('./getMobileMailbox');
 

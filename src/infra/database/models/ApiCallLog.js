@@ -1,5 +1,5 @@
 'use strict';
-const Model = require('./model');
+const Model = require('./Model');
 const category = require('./categories.json').apiCallLog;
 const API_CALL_LOG_TIME_TO_LIVE = 7 * 86400;   //: seconds
 const API_OPERATIONS = [

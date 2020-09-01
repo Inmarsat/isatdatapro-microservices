@@ -1,6 +1,6 @@
 'use strict';
 const logger = require('../../logging').loggerProxy(__filename);
-const SatelliteGateway = require('../models/satelliteGateway');
+const SatelliteGateway = require('../models/SatelliteGateway');
 const gatewayCategory = require('../models/categories.json').satelliteGateway;
 
 /**

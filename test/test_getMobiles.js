@@ -1,5 +1,4 @@
 const getMobiles = require('../src/services/getMobiles');
-const messageGatewayName = 'Inmarsat';
 const events = require('../src/infra/eventHandler').emitter;
 
 const testGetMobiles = async(satelliteGateway, mailboxId) => {
@@ -13,4 +12,4 @@ const testGetMobiles = async(satelliteGateway, mailboxId) => {
   }
 };
 
-//testGetMobiles(undefined, 590);
+testGetMobiles(undefined, 590);

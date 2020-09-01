@@ -4,8 +4,8 @@ const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
-const ApiCallLog = require('../infra/database/models/apiCallLog');
-const Mobile = require('../infra/database/models/mobile');
+const ApiCallLog = require('../infra/database/models/ApiCallLog');
+const Mobile = require('../infra/database/models/Mobile');
 const event = require('../infra/eventHandler');
 
 module.exports = async function(satelliteGatewayName, mailboxId) {

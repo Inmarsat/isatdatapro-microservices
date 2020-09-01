@@ -1,7 +1,7 @@
 'use strict';
-const Model = require('./model');
+const Model = require('./Model');
 const category = require('./categories.json').message;
-const { Payload, Field } = require('./messagePayloadJson');
+const { Payload, Field } = require('./MessagePayloadJson');
 
 function Message(messageId, mobileId, mailboxId, codecServiceId, codecMessageId, payloadRaw, payloadJson, mailboxTimeUtc, size) {
   Model.call(this, category);

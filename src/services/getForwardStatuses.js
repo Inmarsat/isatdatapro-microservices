@@ -4,8 +4,11 @@ const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
-const ApiCallLog = require('../infra/database/models/apiCallLog');
-const ForwardMessage = require('../infra/database/models/messageForward');
+const { ApiCallLog, MessageForward } = require('../infra/database/models');
+/*
+const ApiCallLog = require('../infra/database/models/ApiCallLog');
+const MessageForward = require('../infra/database/models/MessageForward');
+*/
 const event = require('../infra/eventHandler');
 
 module.exports = async function(context) {
@@ -51,7 +54,7 @@ module.exports = async function(context) {
           apiCallLog.messageCount = result.statuses.length;
           for (let s=0; s < result.statuses.length; s++) {
             const status = result.statuses[s];
-            let message = new ForwardMessage();
+            let message = new MessageForward();
             await message.populate(status);
             message.updateStatus(status);
             message.mailboxId = mailbox.mailboxId;

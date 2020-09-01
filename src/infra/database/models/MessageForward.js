@@ -1,5 +1,5 @@
 'use strict';
-const Message = require('./message');
+const Message = require('./Message');
 const category = require('./categories.json').messageForward;
 const idpApi = require('isatdatapro-api');
 

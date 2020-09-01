@@ -4,9 +4,9 @@ const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
-const ApiCallLog = require('../infra/database/models/apiCallLog');
-const ForwardMessage = require('../infra/database/models/messageForward');
-const Mobile = require('../infra/database/models/mobile');
+const ApiCallLog = require('../infra/database/models/ApiCallLog');
+const ForwardMessage = require('../infra/database/models/MessageForward');
+const Mobile = require('../infra/database/models/Mobile');
 const supportedCommands = require('../infra/messageCodecs/coreModem').commandMessages;
 const event = require('../infra/eventHandler');
 

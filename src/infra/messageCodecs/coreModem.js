@@ -2,10 +2,10 @@
 
 const codecServiceId = 0;
 const logger = require('../logging').loggerProxy(__filename);
-const Mobile = require('../database/models/mobile');
-const { Payload, Field } = require('../database/models/messagePayloadJson');
-const ReturnMessage = require('../database/models/messageReturn');
-const ForwardMessage = require('../database/models/messageForward');
+const Mobile = require('../database/models/Mobile');
+const { Payload, Field } = require('../database/models/MessagePayloadJson');
+const ReturnMessage = require('../database/models/MessageReturn');
+const ForwardMessage = require('../database/models/MessageForward');
 const { parseFieldValue } = require('./commonMessageFormat');
 const event = require('../eventHandler');
 

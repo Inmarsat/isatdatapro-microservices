@@ -1,5 +1,5 @@
 'use strict';
-const Model = require('./model');
+const Model = require('./Model');
 const category = require('./categories.json').satelliteGateway;
 
 function SatelliteGateway(name, url) {

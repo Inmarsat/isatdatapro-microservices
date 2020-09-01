@@ -2,7 +2,7 @@
 
 const logger = require('../infra/logging').loggerProxy(__filename);
 const DatabaseContext = require('../infra/database/repositories');
-const SatelliteGateway = require('../infra/database/models/satelliteGateway');
+const SatelliteGateway = require('../infra/database/models/SatelliteGateway');
 
 /**
  * 

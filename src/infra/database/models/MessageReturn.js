@@ -1,6 +1,6 @@
 'use strict';
-const Message = require('./message');
-const { Payload, Fields } = require('./messagePayloadJson');
+const Message = require('./Message');
+const { Payload, Fields } = require('./MessagePayloadJson');
 const category = require('./categories.json').messageReturn;
 
 function MessageReturn(messageId, mobileId, codecServiceId, payloadRaw, payloadJson, mailboxTimeUtc, receiveTimeUtc, satelliteRegion, mailboxId) {
