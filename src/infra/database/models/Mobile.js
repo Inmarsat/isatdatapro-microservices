@@ -2,6 +2,13 @@
 const Model = require('./Model');
 const category = require('./categories.json').mobile;
 
+/**
+ * Represents the satellite modem
+ * @constructor
+ * @param {string} mobileId Unique modem ID
+ * @param {string} description A logical description of the associated asset
+ * @param {string|number} mailboxId The Mailbox to which the Mobile is assigned
+ */
 function Mobile(mobileId, description, mailboxId) {
   Model.call(this, category);
   this.mobileId = typeof(mobileId) !== 'undefined' ? mobileId : null;

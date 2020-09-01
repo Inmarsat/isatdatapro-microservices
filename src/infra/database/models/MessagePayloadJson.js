@@ -17,11 +17,11 @@ function isValidCodecId(id) {
 /**
  * A message payloadJson
  * @constructor
- * @param {string} name 
- * @param {number} codecServiceId 
- * @param {number} codecMessageId 
- * @param {boolean} isForward
- * @param {Array} fields 
+ * @param {string} name The name of the message
+ * @param {number} codecServiceId Service identifier (aka SIN)
+ * @param {number} codecMessageId Message type identifier (aka MIN)
+ * @param {boolean} isForward Flag indicating a Forward Message
+ * @param {Object[]} fields An array of Field objects
  */
 function Payload(name, codecServiceId, codecMessageId, isForward, fields) {
   this.name = typeof(name) === 'string' ? name : null;

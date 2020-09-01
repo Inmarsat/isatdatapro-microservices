@@ -3,6 +3,19 @@ const Message = require('./Message');
 const { Payload, Fields } = require('./MessagePayloadJson');
 const category = require('./categories.json').messageReturn;
 
+/**
+ * Represents a Return (Mobile-Originated) message
+ * @constructor
+ * @param {number} messageId Unique ID assigned by the network
+ * @param {string} mobileId Unique modem ID (sender)
+ * @param {number} codecServiceId Service identifier (aka SIN)
+ * @param {number[]} [payloadRaw] A decimal byte array of the payload
+ * @param {object} [payloadJson] A JSON structured payload
+ * @param {string} mailboxTimeUtc ISO time ready for retrieval at the Mailbox
+ * @param {string} receiveTimeUtc ISO time received by the network
+ * @param {string} satelliteRegion Identifier for the satellite beam used
+ * @param {string|number} mailboxId Unique Mailbox ID
+ */
 function MessageReturn(messageId, mobileId, codecServiceId, payloadRaw, payloadJson, mailboxTimeUtc, receiveTimeUtc, satelliteRegion, mailboxId) {
   Message.call(this, messageId, mobileId);
   this.category = category;

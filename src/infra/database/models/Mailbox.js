@@ -3,6 +3,16 @@ const Model = require('./Model');
 const category = require('./categories.json').mailbox;
 const crypto = require('../../encryption');
 
+/**
+ * Represents a Mailbox on the satellite message gateway
+ * @constructor
+ * @param {string|number} mailboxId Unique mailbox/account ID
+ * @param {string} name A logical identifier for the mailbox
+ * @param {string} accessId The username credential
+ * @param {string} password The password credential (encrypted when stored)
+ * @param {string} satelliteGatewayName The shorthand name of the gateway host
+ * @param {boolean} enabled Flag whether to include mailbox in operations
+ */
 function Mailbox(mailboxId, name, accessId, password, satelliteGatewayName, enabled) {
   Model.call(this, category);
   if (typeof(mailboxId) === 'string' || typeof(mailboxId) === 'number') {
@@ -23,10 +33,19 @@ function Mailbox(mailboxId, name, accessId, password, satelliteGatewayName, enab
 Mailbox.prototype = Object.create(Model.prototype);
 Mailbox.prototype.constructor = Mailbox;
 
+/**
+ * Encrypts the password for storage
+ * @param {string} password The password (unencrypted)
+ * @param {string} secret The encryption secret
+ */
 Mailbox.prototype.passwordSet = function(password, secret) {
   this.encryptedPassword = crypto.encrypt(password, secret);
 }
 
+/**
+ * Returns the unencrypted password from storage
+ * @param {string} secret The encryption secret
+ */
 Mailbox.prototype.passwordGet = function(secret) {
   return crypto.decrypt(this.encryptedPassword, secret);
 }

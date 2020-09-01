@@ -3,6 +3,20 @@ const Message = require('./Message');
 const category = require('./categories.json').messageForward;
 const idpApi = require('isatdatapro-api');
 
+/**
+ * Represents a Forward (Mobile-Terminated) message
+ * @constructor
+ * @param {number} [userMessageId] Optional user-assigned ID
+ * @param {number} messageId Network-assigned unique ID
+ * @param {string} mobileId The destination of the message
+ * @param {number[]} [payloadRaw] A decimal byte array payload
+ * @param {object} [payloadJson] A JSON structured payload
+ * @param {string} mailboxTimeUtc ISO timestamp when submitted to the network
+ * @param {number} state A numeric code representing the delivery state
+ * @param {string} stateTimeUtc ISO timestamp of the state
+ * @param {number} mobileWakeupPeriod A numberic code representing wakeup period of the modem
+ * @param {string} scheduledSendTimeUtc ISO timestamp for message delivery in low power mode
+ */
 function MessageForward(userMessageId, messageId, mobileId, payloadRaw, payloadJson, mailboxTimeUtc, state, stateTimeUtc, mobileWakeupPeriod, scheduledSendTimeUtc) {
   Message.call(this, messageId, mobileId, payloadRaw, payloadJson, mailboxTimeUtc);
   this.category = category;
