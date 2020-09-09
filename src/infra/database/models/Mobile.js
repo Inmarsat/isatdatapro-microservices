@@ -1,6 +1,6 @@
 'use strict';
 const Model = require('./Model');
-const category = require('./categories.json').mobile;
+//const category = require('./categories.json').Mobile;
 
 /**
  * Represents the satellite modem
@@ -10,7 +10,7 @@ const category = require('./categories.json').mobile;
  * @param {string|number} mailboxId The Mailbox to which the Mobile is assigned
  */
 function Mobile(mobileId, description, mailboxId) {
-  Model.call(this, category);
+  Model.call(this, this.category);
   this.mobileId = typeof(mobileId) !== 'undefined' ? mobileId : null;
   this.description = typeof(description) !== 'undefined' ? description : '';
   this.mailboxId = typeof(mailboxId) !== 'undefined' ? mailboxId : null;
@@ -20,7 +20,7 @@ function Mobile(mobileId, description, mailboxId) {
   this.lastResetReason = null;
   this.operatorTxState = null;
   this.userTxState = null;
-  this.mobileWakeupPeriod = 0;
+  this.mobileWakeupPeriod = 'None';
   this.version = {
     hardware: '0.0.0',
     firmware: '0.0.0',
@@ -41,5 +41,7 @@ function Mobile(mobileId, description, mailboxId) {
 
 Mobile.prototype = Object.create(Model.prototype);
 Mobile.prototype.constructor = Mobile;
+Mobile.prototype.category = 'mobile';
+Mobile.prototype.unique = 'mobileId';
 
 module.exports = Mobile;

@@ -61,7 +61,8 @@ module.exports = async function () {
             message.codecMessageId = message.getCodecMessageId();
             // TODO: confirm if payload array/json cause issues
             let messageFilter = { messageId: message.messageId };
-            let { id: id1, created: newMessage } = await database.createIfNotExists(message.toDb(), messageFilter);
+            //let { id: id1, created: newMessage } = await database.upsert(message.toDb(), messageFilter);
+            let { id: id1, created: newMessage } = await database.upsert(message, messageFilter);
             if (newMessage) {
               logger.debug(`Added return message ${message.messageId} to database (${id1})`);
               event.newReturnMessage(message);
@@ -76,7 +77,7 @@ module.exports = async function () {
                 Object.assign(mobile, mobileMeta);
               }
               let mobileFilter = { mobileId: message.mobileId };
-              let { id: id2, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
+              let { id: id2, created: newMobile } = await database.upsert(mobile, mobileFilter);
               if (newMobile) {
                 logger.debug(`Mobile ${mobile.mobileId} added to database (${id2})`);
                 event.newMobile(mobile);
@@ -102,7 +103,7 @@ module.exports = async function () {
         throw err;
       }
     });
-    await database.create(apiCallLog.toDb());
+    await database.upsert(apiCallLog.toDb());
     if (moreToRetrieve) {
       getMessages(mailbox, moreToRetrieve);
     }

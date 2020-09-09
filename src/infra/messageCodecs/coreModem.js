@@ -2,10 +2,10 @@
 
 const codecServiceId = 0;
 const logger = require('../logging').loggerProxy(__filename);
-const Mobile = require('../database/models/Mobile');
+const { Mobile, MessageReturn, MessageForward } = require('../database/models');
 const { Payload, Field } = require('../database/models/MessagePayloadJson');
-const ReturnMessage = require('../database/models/MessageReturn');
-const ForwardMessage = require('../database/models/MessageForward');
+//const MessageReturn = require('../database/models/MessageReturn');
+//const MessageForward = require('../database/models/MessageForward');
 const { parseFieldValue } = require('./commonMessageFormat');
 const event = require('../eventHandler');
 
@@ -102,10 +102,9 @@ function handleUnknownField(fieldName, messageId) {
  * and emits various events
  * @public
  * @param {MessageReturn} message The message with metadata
- * @param {DatabaseContext} database The database connection
  * @returns {Object} mobile metadata
  */
-function parseCoreModem(message, database) {
+function parseCoreModem(message) {
   if (!message.payloadJson || message.codecServiceId !== 0) {
     throw new Error(`Attempt to parse message ${message.messageId} as core modem`);
   }
@@ -337,7 +336,7 @@ function parseModemSleepSchedule(message) {
 /**
  * Parses location and timestamp data to update the IdpMobiles collection with device metadata
  * @private
- * @param {ReturnMessage} message The location message
+ * @param {MessageReturn} message The location message
  * @returns {Mobile} The Mobile metadata
  */
 function parseModemLocation(message) {
@@ -374,7 +373,7 @@ function parseModemLocation(message) {
 /**
  * Parses response to query for last receive information
  * @private
- * @param {ReturnMessage} message The lastRxInfo message
+ * @param {MessageReturn} message The lastRxInfo message
  */
 function parseModemLastRxInfo(message) {
   let eventDetail = {};
@@ -466,7 +465,7 @@ function getMetricsPeriod(periodCode) {
 /**
  * Parses response to get receive metrics
  * @private
- * @param {ReturnMessage} message The message
+ * @param {MessageReturn} message The message
  * @param {MessageMetadata} meta Metadata including mobileId, timestamp, [topic]
  */
 function parseModemRxMetrics(message) {
@@ -497,21 +496,40 @@ function parseModemRxMetrics(message) {
   event.modemRxMetricsReply(eventDetail);
 }
 
+function processTxMetric(txMetrics) {
+  let meta = {};
+  txMetrics.forEach(metric => {
+    switch (metric.name) {
+      case 'PacketsTotal':
+        meta.segmentsTotal = metric.value;
+        break;
+      case 'PacketsSuccess':
+        meta.segmentsOk = metric.value;
+        break;
+      case 'PacketsFailed':
+        meta.segmentsFailed = metric.value;
+        break;
+    }
+  });
+  return meta;
+}
+
 /**
  * Parses response to get transmit metrics
  * @private
- * @param {ReturnMessage} message The return message
+ * @param {MessageReturn} message The return message
  */
 function parseModemTxMetrics(message) {
   let eventDetails = {};
   let tmp = {};
+  let packetTypeMask = 0;
   message.payloadJson.fields.forEach(field => {
     switch (field.name) {
       case 'period':
         eventDetails.period = getMetricsPeriod(parseFieldValue(field));
         break;
       case 'packetTypeMask':
-        let packetTypeMask = parseFieldValue(field);
+        packetTypeMask = parseFieldValue(field);
         tmp.bitmask = [];
         for (let b = 0; b < 8; b++) {
           tmp.bitmask[b] = (packetTypeMask >> b) & 1;
@@ -525,47 +543,38 @@ function parseModemTxMetrics(message) {
     }
   });
   eventDetails.txMetrics = [];
-  for (let i = 0; i < tmp.bitmask.length; i++) {
-    if (bitmask[i] === 1) {
-      let metric = {};
-      switch (i) {
-        case 0:
-          metric.type = 'ack';
-          break;
-        case 1:
-          metric.type = '0.5s subframe 0.33 rate';
-          break;
-        case 2:
-          metric.type = '0.5s subframe 0.5 rate';
-          break;
-        case 3:
-          metric.type = '0.5s subframe 0.75 rate';
-          break;
-        case 5:
-          metric.type = '1s subframe 0.33 rate';
-          break;
-        case 6:
-          metric.type = '1s subframe 0.5 rate';
-          break;
-        default:
-          metric.type = 'undefined';
-      }
-      tmp.txMetrics.forEach(txMetric => {
-        switch (txMetric.name) {
-          case 'PacketsTotal':
-            metric.segmentsTotal = txMetric.value;
+  if (packetTypeMask === 0) {
+    let metric = { type: 'none' };
+    eventDetails.txMetrics.push(metric);
+  } else {
+    for (let i = 0; i < tmp.bitmask.length; i++) {
+      if (tmp.bitmask[i] === 1) {
+        let metric = {};
+        switch (i) {
+          case 0:
+            metric.type = 'ack';
             break;
-          case 'PacketsSuccess':
-            metric.segmentsOk = txMetric.value;
+          case 1:
+            metric.type = '0.5s subframe 0.33 rate';
             break;
-          case 'PacketsFailed':
-            metric.segmentsFailed = txMetric.value;
+          case 2:
+            metric.type = '0.5s subframe 0.5 rate';
+            break;
+          case 3:
+            metric.type = '0.5s subframe 0.75 rate';
+            break;
+          case 5:
+            metric.type = '1s subframe 0.33 rate';
+            break;
+          case 6:
+            metric.type = '1s subframe 0.5 rate';
             break;
           default:
-            handleUnknownField(txMetric.name, message.messageId);
+            metric.type = 'undefined';
         }
-      });
-      eventDetails.txMetrics.push(metric);
+        Object.assign(metric, processTxMetric(tmp.txMetrics[i]))
+        eventDetails.txMetrics.push(metric);
+      }
     }
   }
   event.modemTxMetricsReply(eventDetails);
@@ -590,7 +599,7 @@ function pingTime(timestamp) {
 /**
  * Parses a ping response to update the IdpMobiles collection metadata
  * @private
- * @param {ReturnMessage} message The return message
+ * @param {MessageReturn} message The return message
  */
 function parseModemPingReply(message) {
   let latency = {};
@@ -631,7 +640,7 @@ function parseModemPingReply(message) {
 /**
  * Parses request from modem for network ping response (note: response is automatically generated by the network)
  * @private
- * @param {ReturnMessage} message The return message
+ * @param {MessageReturn} message The return message
  */
 function parseNetworkPingRequest(message) {
   let eventDetail = {};
@@ -653,7 +662,7 @@ function parseNetworkPingRequest(message) {
 /**
  * Parses request from modem for network ping response (note: response is automatically generated by the network)
  * @private
- * @param {ReturnMessage} message The return message
+ * @param {MessageReturn} message The return message
  * @returns {Mobile} Mobile metadata
  */
 function parseModemBroadcastIds(message) {
@@ -686,7 +695,7 @@ function parseModemBroadcastIds(message) {
 /**
  * Encodes the modem reset message based on the reset type
  * @param {string | number | undefined} resetType
- * @returns {ForwardMessage} Message and raw payload number array
+ * @returns {MessageForward} Message and raw payload number array
  */
 function commandReset(resetType) {
   const resetTypes = {
@@ -716,7 +725,7 @@ function commandReset(resetType) {
 /**
  * Returns a setWakeupPeriod message
  * @param {string|number} mobileWakeupPeriod A valid wakeupPeriod
- * @returns {ForwardMessage} The forward message
+ * @returns {MessageForward} The forward message
  * @throws {Error} if mobileWakeupPeriod is invalid
  */
 function commandSetMobileWakeupPeriod(mobileWakeupPeriod) {
@@ -763,7 +772,7 @@ function commandSetMobileWakeupPeriod(mobileWakeupPeriod) {
 /**
  * Mutes or unmutes the modem transmitter
  * @param {boolean} muteFlag Set or clear transmit mute
- * @returns {ForwardMessage} The forward message
+ * @returns {MessageForward} The forward message
  */
 function commandMute(muteFlag) {
   logger.warn('Feature not implemented');
@@ -785,7 +794,7 @@ function commandGetLocation() {
 
 /**
  * Gets modem configuration
- * @returns {ForwardMessage} The message
+ * @returns {MessageForward} The message
  */
 function commandGetModemConfiguration() {
   let payloadJson = new Payload('getConfiguration', 0, 97, true);
@@ -795,7 +804,7 @@ function commandGetModemConfiguration() {
 
 /**
  * Gets modem last receive information
- * @returns {ForwardMessage} The message
+ * @returns {MessageForward} The message
  */
 function commandGetLastRxInfo() {
   let payloadJson = new Payload('getLastRxInfo', 0, 98, true);
@@ -806,7 +815,7 @@ function commandGetLastRxInfo() {
 /**
  * 
  * @param {string} metricsPeriod 
- * @returns {ForwardMessage} The forward message
+ * @returns {MessageForward} The forward message
  */
 function commandGetRxMetrics(metricsPeriod) {
   console.warn('Feature not tested');
@@ -823,7 +832,7 @@ function commandGetRxMetrics(metricsPeriod) {
 /**
  * 
  * @param {string} metricsPeriod 
- * @returns {ForwardMessage} The forward message
+ * @returns {MessageForward} The forward message
  */
 function commandGetTxMetrics(metricsPeriod) {
   console.warn('Feature not tested');
@@ -839,7 +848,7 @@ function commandGetTxMetrics(metricsPeriod) {
 
 /**
  * Returns payload for a modem ping request
- * @returns {ForwardMessage} The forward message
+ * @returns {MessageForward} The forward message
  */
 function commandModemPing() {
   let payloadJson = new Payload('pingModem', 0, 112, true);
@@ -851,7 +860,7 @@ function commandModemPing() {
 
 /**
  * Gets provisioned Broadcast IDs
- * @returns {ForwardMessage} The forward message
+ * @returns {MessageForward} The forward message
  */
 function commandGetBroadcastIds() {
   let payloadJson = new Payload('requestBroadcastIds', 0, 115, true);

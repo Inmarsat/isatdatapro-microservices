@@ -1,8 +1,6 @@
 'use strict';
 
-const parser = require('../src/infra/messageCodecs/coreModem');
-const ReturnMessage = require('../src/infra/database/models/messageReturn');
-const { payloadJson, Field } = require('../src/infra/database/models/messagePayloadJson');
+const { coreModem } = require('../src/infra/messageCodecs');
 
 const returnMessages = {
   /*
@@ -123,7 +121,7 @@ const returnMessages = {
     payloadRaw: [0, 113, 0, 0],
     otaMessageSize: 4,
   },
-  */
+  *//*
   broadcastIds: {
     payloadJson: {
       "name":"broadcastIDs",
@@ -159,60 +157,131 @@ const returnMessages = {
   },
   rxMetrics: {
     payloadJson: {
-      "Name":"rxMetrics",
-      "SIN":0,
-      "MIN":99,
-      "Fields":[
-        {"Name":"reserved","Value":"0","Type":"unsignedint"},
-        {"Name":"period","Value":"LastFullMinute","Type":"enum"},
-        {"Name":"packets","Value":"0","Type":"unsignedint"},
-        {"Name":"packetsOK","Value":"0","Type":"unsignedint"},
-        {"Name":"averageCNO","Value":"0","Type":"unsignedint"},
-        {"Name":"samples","Value":"0","Type":"unsignedint"},
-        {"Name":"channelErrorRate","Value":"0","Type":"unsignedint"},
-        {"Name":"uwErrorRate","Value":"0","Type":"unsignedint"}
+      "name":"rxMetrics",
+      "codecServiceId":0,
+      "codecMessageId":99,
+      "fields":[
+        {"name":"reserved","stringValue":"0","dataType":"unsignedint"},
+        {"name":"period","stringValue":"LastFullMinute","dataType":"enum"},
+        {"name":"packets","stringValue":"0","dataType":"unsignedint"},
+        {"name":"packetsOK","stringValue":"0","dataType":"unsignedint"},
+        {"name":"averageCNO","stringValue":"0","dataType":"unsignedint"},
+        {"name":"samples","stringValue":"0","dataType":"unsignedint"},
+        {"name":"channelErrorRate","stringValue":"0","dataType":"unsignedint"},
+        {"name":"uwErrorRate","stringValue":"0","dataType":"unsignedint"}
       ]
     }
   },
+  */
   txMetrics: {
     payloadJson: {
-      "Name":"txMetrics",
-      "SIN":0,
-      "MIN":100,
-      "Fields":[
-        {"Name":"reserved","Value":"0","Type":"unsignedint"},
-        {"Name":"period","Value":"LastFullMinute","Type":"enum"},
-        {"Name":"packetTypeMask","Value":"0","Type":"unsignedint"},
-        {"Name":"txMetrics","Type":"array","Elements":[
-          {"Index":0,"Fields":[{"Name":"PacketsTotal","Value":"0","Type":"unsignedint"},
-          {"Name":"PacketsSuccess","Value":"0","Type":"unsignedint"},
-          {"Name":"PacketsFailed","Value":"0","Type":"unsignedint"}
-        ]}]}
+      "name": "txMetrics",
+      "codecServiceId": 0,
+      "codecMessageId": 100,
+      "fields": [
+        { "name": "period", "stringValue": "LastFullMinute", "dataType": "enum" },
+        { "name": "packetTypeMask", "stringValue": "0", "dataType": "unsignedint" },
+        {
+          "name": "txMetrics", "dataType": "array", "arrayElements": [
+            {
+              "index": 0, "fields": [{ "name": "PacketsTotal", "stringValue": "0", "dataType": "unsignedint" },
+              { "name": "PacketsSuccess", "stringValue": "0", "dataType": "unsignedint" },
+              { "name": "PacketsFailed", "stringValue": "0", "dataType": "unsignedint" }
+              ]
+            }]
+        }
       ]
     }
   },
+  /*
+  txMetrics2: {
+    payloadJson: {
+      "name": "txMetrics",
+      "codecServiceId": 0,
+      "codecMessageId": 100,
+      "fields": [
+        {
+          "name": "period",
+          "stringValue": "LastPartialDay",
+          "dataType": "enum"
+        },
+        {
+          "name": "packetTypeMask",
+          "stringValue": "3",
+          "dataType": "unsignedint"
+        },
+        {
+          "name": "txMetrics",
+          "dataType": "array",
+          "arrayElements": [
+            {
+              "index": 0,
+              "fields": [
+                {
+                  "name": "PacketsTotal",
+                  "stringValue": "17",
+                  "dataType": "unsignedint"
+                },
+                {
+                  "name": "PacketsSuccess",
+                  "stringValue": "17",
+                  "dataType": "unsignedint"
+                },
+                {
+                  "name": "PacketsFailed",
+                  "stringValue": "0",
+                  "dataType": "unsignedint"
+                }
+              ]
+            },
+            {
+              "index": 1,
+              "fields": [
+                {
+                  "name": "PacketsTotal",
+                  "stringValue": "8",
+                  "dataType": "unsignedint"
+                },
+                {
+                  "name": "PacketsSuccess",
+                  "stringValue": "8",
+                  "dataType": "unsignedint"
+                },
+                {
+                  "name": "PacketsFailed",
+                  "stringValue": "0",
+                  "dataType": "unsignedint"
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+  },
+  /*
   lastRxMetrics: {
     payloadJson: {
-      "Name":"lastRxMetrics",
-      "SIN":0,
-      "MIN":98,
-      "Fields":[
-        {"Name":"sipValid","Value":"False","Type":"boolean"},
-        {"Name":"subframe","Value":"512","Type":"unsignedint"},
-        {"Name":"packets","Value":"0","Type":"unsignedint"},
-        {"Name":"packetsOK","Value":"0","Type":"unsignedint"},
-        {"Name":"frequencyOffset","Value":"0","Type":"unsignedint"},
-        {"Name":"timingOffset","Value":"0","Type":"unsignedint"},
-        {"Name":"packetCNO","Value":"0","Type":"unsignedint"},
-        {"Name":"uwCNO","Value":"0","Type":"unsignedint"},
-        {"Name":"uwRSSI","Value":"0","Type":"unsignedint"},
-        {"Name":"uwSymbols","Value":"0","Type":"unsignedint"},
-        {"Name":"uwErrors","Value":"0","Type":"unsignedint"},
-        {"Name":"packetSymbols","Value":"0","Type":"unsignedint"},
-        {"Name":"packetErrors","Value":"0","Type":"unsignedint"}
+      "name":"lastRxMetrics",
+      "codecServiceId":0,
+      "codecMessageId":98,
+      "fields":[
+        {"name":"sipValid","stringValue":"False","dataType":"boolean"},
+        {"name":"subframe","stringValue":"512","dataType":"unsignedint"},
+        {"name":"packets","stringValue":"0","dataType":"unsignedint"},
+        {"name":"packetsOK","stringValue":"0","dataType":"unsignedint"},
+        {"name":"frequencyOffset","stringValue":"0","dataType":"unsignedint"},
+        {"name":"timingOffset","stringValue":"0","dataType":"unsignedint"},
+        {"name":"packetCNO","stringValue":"0","dataType":"unsignedint"},
+        {"name":"uwCNO","stringValue":"0","dataType":"unsignedint"},
+        {"name":"uwRSSI","stringValue":"0","dataType":"unsignedint"},
+        {"name":"uwSymbols","stringValue":"0","dataType":"unsignedint"},
+        {"name":"uwErrors","stringValue":"0","dataType":"unsignedint"},
+        {"name":"packetSymbols","stringValue":"0","dataType":"unsignedint"},
+        {"name":"packetErrors","stringValue":"0","dataType":"unsignedint"}
       ]
     }
-  }
+  }*/
 };
 
 const forwardMessages = {
@@ -262,31 +331,31 @@ const forwardMessages = {
     payloadRaw: [0, 72],
     otaMessageSize: 2,
   },
-  */
   getRxMetrics: {
     payloadJson: {
-      "Name":"getRxMetrics",
-      "SIN":0,
-      "MIN":99,
-      "IsForward":"True",
-      "Fields":[
-        {"Name":"reserved","Value":"0","Type":"unsignedint"},
-        {"Name":"period","Value":"LastFullMinute","Type":"enum"}
+      "name":"getRxMetrics",
+      "codecServiceId":0,
+      "codecMessageId":99,
+      "isForward":"True",
+      "fields":[
+        {"name":"reserved","stringValue":"0","dataType":"unsignedint"},
+        {"name":"period","stringValue":"LastFullMinute","dataType":"enum"}
       ]
     }
   },
   getTxMetrics: {
     payloadJson: {
-      "Name":"getTxMetrics",
-      "SIN":0,
-      "MIN":100,
-      "IsForward":"True",
-      "Fields":[
-        {"Name":"reserved","Value":"0","Type":"unsignedint"},
-        {"Name":"period","Value":"LastFullMinute","Type":"enum"}
+      "name":"getTxMetrics",
+      "codecServiceId":0,
+      "codecMessageId":100,
+      "isForward":"True",
+      "fields":[
+        {"name":"reserved","stringValue":"0","dataType":"unsignedint"},
+        {"name":"period","stringValue":"LastFullMinute","dataType":"enum"}
       ]
     }
   },
+  */
 };
 
 let returnCase = 0;
@@ -298,7 +367,7 @@ for (let testCase in returnMessages) {
   message.codecServiceId = 0;
   message.receiveTimeUtc = new Date().toISOString().substring(0, 19) + 'Z';
   message.mailboxTimeUtc = message.receiveTimeUtc;
-  let response = parser.parseCoreModem(message);
+  let response = coreModem.parse(message);
   console.log(`${JSON.stringify(response)}`);
 }
 
@@ -309,16 +378,16 @@ for (let testCase in forwardMessages) {
   let payloadJson;
   switch (testCase) {
     case 'reset':
-      payloadJson = parser.commandMessages.reset();
+      payloadJson = coreModem.commandMessages.reset();
       break;
     case 'setSleepSchedule':
-      payloadJson = parser.commandMessages.setWakeupPeriod('None');
+      payloadJson = coreModem.commandMessages.setWakeupPeriod('None');
       break;
     case 'setTxMute':
-      payloadJson = parser.commandMessages.setTxMute(true);
+      payloadJson = coreModem.commandMessages.setTxMute(true);
       break;
     case 'getPosition':
-      payloadJson = parser.commandMessages.getLocation();
+      payloadJson = coreModem.commandMessages.getLocation();
       break;
     default:
       console.log(`No encoding defined for ${testCase}`);
@@ -340,7 +409,7 @@ for (let testCase in forwardMessages) {
               console.log(`Mismatch ${prop}`);
               match = false;
             }
-            }
+          }
         } else {
           console.log(`Mismatch ${prop}`);
           match = false;

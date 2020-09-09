@@ -1,7 +1,7 @@
 'use strict';
 const logger = require('../../logging').loggerProxy(__filename);
-const ApiCallLog = require('../models/ApiCallLog');
-const apiCallLogCategory = require('../models/categories.json').apiCallLog;
+const { ApiCallLog } = require('../models');
+//const category = require('../models/categories.json').ApiCallLog;
 const propertyConversion = require('./propertyConversion');
 
 /**
@@ -25,16 +25,17 @@ async function getHighwatermark(dbContext, mailboxId, operation) {
     mailboxId: mailboxId,
     completed: true,
   };
-  queryFilter = propertyConversion.dbFilter(queryFilter);
+  //queryFilter = propertyConversion.dbFilter(queryFilter);
   const options = {
     limit: 1,
     desc: '_ts',
   };
-  const apiCalls = await dbContext.find(apiCallLogCategory, queryFilter, options);
+  const category = ApiCallLog.prototype.category;
+  const apiCalls = await dbContext.find(category, queryFilter, options);
   if (apiCalls.length > 0) {
-    //
-    let lastCall = new ApiCallLog();
-    lastCall.fromDb(apiCalls[0]);
+    //let lastCall = new ApiCallLog();
+    //lastCall.fromDb(apiCalls[0]);
+    const lastCall = apiCalls[0];
     if (lastCall.nextStartId > 0) {
       apifilter.startMessageId = lastCall.nextStartId;
       logger.debug(`Found next start ID ${apiFilter.startMessageId}`

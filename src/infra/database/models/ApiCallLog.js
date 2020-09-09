@@ -1,6 +1,6 @@
 'use strict';
 const Model = require('./Model');
-const category = require('./categories.json').apiCallLog;
+//const category = require('./categories.json').ApiCallLog;
 const API_CALL_LOG_TIME_TO_LIVE = 7 * 86400;   //: seconds
 const API_OPERATIONS = [
   'getReturnMessages',
@@ -18,7 +18,7 @@ const API_OPERATIONS = [
  * @param {string} callTimeUtc ISO string value of the call time of the operation
  */
 function ApiCallLog(operation, satelliteGatewayName, mailboxId, callTimeUtc) {
-  Model.call(this, category);
+  Model.call(this, this.category);
   this.operation = typeof(operation) === 'string' ? operation : null;
   this.satelliteGatewayName = typeof(satelliteGatewayName) === 'string' ? satelliteGatewayName : null;
   this.mailboxId = typeof(mailboxId) === 'string' ? mailboxId : null;
@@ -34,6 +34,7 @@ function ApiCallLog(operation, satelliteGatewayName, mailboxId, callTimeUtc) {
 
 ApiCallLog.prototype = Object.create(Model.prototype);
 ApiCallLog.prototype.constructor = ApiCallLog;
+ApiCallLog.prototype.category = 'api_call_log';
 
 ApiCallLog.prototype.success = function() {
   return (this.completed && this.errorId === 0);

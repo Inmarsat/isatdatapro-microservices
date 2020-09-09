@@ -3,26 +3,20 @@ require('dotenv').config();
 const logger = require('../../logging').loggerProxy(__filename);
 //TODO: migrate toDb and fromDb operations from model into repository
 const models = require('../models');
-const CosmosClient = require('@azure/cosmos').CosmosClient;
-const propertyConversion = require('../utilities/propertyConversion');
+//const categories = require('../models/categories.json');
+const { toDb, fromDb, dbFilter } = require('../utilities/propertyConversion');
 
+const CosmosClient = require('@azure/cosmos').CosmosClient;
 const endpoint = process.env.DB_HOST;
 const key = process.env.DB_PASS;
 const databaseId = process.env.DB_NAME;
 const containerId = process.env.DB_CONTAINER;
 const partitionKey = { "kind": "Hash", "paths": [`/${process.env.DB_PARTITION}`] };
 const throughput = process.env.DB_THROUGHPUT;
-const dbConfig = {
-  endpoint: endpoint,
-  key: key,
-  databaseId: databaseId,
-  containerId: containerId,
-  partitionKey: partitionKey,
-  throughput: throughput,
-};
 
 /**
- * Constructor
+ * Creates a Cosmos DB connection
+ * @constructor
  */
 function DatabaseContext() {
   this.type = 'CosmosDB';
@@ -35,7 +29,6 @@ function DatabaseContext() {
  */
 DatabaseContext.prototype.initialize = async function() {
   try {
-    //logger.debug(`Initializing database with ${JSON.stringify(dbConfig)}`);
     const databaseResponse = await this.connection.databases
       .createIfNotExists({ id: databaseId });
     if (databaseResponse.statusCode === 201) {
@@ -56,15 +49,50 @@ DatabaseContext.prototype.initialize = async function() {
     this.container = this.database.container(containerId);
     this.isInitialized = true;
   } catch (err) {
-    if (err) { logger.error(err); }
+    logger.error(err);
   }
 }
 
+function modelFromDb(dbItem, includeUuid) {
+  const category = dbItem.category;
+  let model = null;
+  for (const modelName in models) {
+    if (category === models[modelName].prototype.category) {
+      model = new models[modelName];
+      break;
+    }
+  }
+  if (!model) throw new Error(`No model found for ${category}`);
+  const modelProperties = Object.getOwnPropertyNames(model);
+  modelProperties.forEach(prop => {
+    const dbProp = toDb(prop);
+    if (model.hasOwnProperty(prop) && dbItem.hasOwnProperty(dbProp)) {
+      const { modelValue } = fromDb(dbProp, dbItem[dbProp]);
+      model[prop] = modelValue;
+    }
+  });
+  if (includeUuid) model.uuid = dbItem.id;
+  return model;
+}
+
+function modelToDb(item) {
+  const dbItem = {};
+  const itemProperties = Object.getOwnPropertyNames(item);
+  itemProperties.forEach(prop => {
+    if (item.hasOwnProperty(prop)) {
+      const { dbProp, dbValue } = toDb(prop, item[prop]);
+      dbItem[dbProp] = dbValue;
+    }
+  });
+  return dbItem;
+}
+
 /**
+ * Returns database entries matching a criteria
  * @param {string} category 
- * @param {object} filter key/value pairs for equality filtering
- * @param {object} options e.g. { limit: 1, desc: 'dbTimestamp' }
- * @returns {object} a list of row objects matching the criteria
+ * @param {Object} filter key/value pairs for equality filtering
+ * @param {Object} options e.g. { limit: 1, desc: 'dbTimestamp' }
+ * @returns {Object[]} a list of row objects matching the criteria
  */
 DatabaseContext.prototype.find = async function(category, filter, options) {
   if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
@@ -92,6 +120,7 @@ DatabaseContext.prototype.find = async function(category, filter, options) {
     querySpec.query += ` WHERE c.category = "${category}"`;
   }
   if (filter) {
+    filter = dbFilter(filter);
     //: iterate key/value pairs adding query filters
     for (let k in filter) {
       if (filter.hasOwnProperty(k)) {
@@ -104,19 +133,19 @@ DatabaseContext.prototype.find = async function(category, filter, options) {
   querySpec.query += `${order}`;
   const { resources: items } = await this.container
     .items.query(querySpec).fetchAll();
-  /*
+  const entities = [];
   items.forEach(item => {
-    logger.debug(`Found ${item.id}: ${JSON.stringify(item)}`);
+    //logger.debug(`Found ${item.id}: ${JSON.stringify(item)}`);
+    entities.push(modelFromDb(item, true));
   });
-  */
-  return items;
+  return entities;
 }
 
 /**
  * Returns true if the item is found in the database based on filter criteria
  * If no filter is provided, all properties save id will be criteria
- * @param {object} item Item to check in the database
- * @param {object} [filterOn] Optional property name to use as filter criteria
+ * @param {Object} item Item to check in the database
+ * @param {Object} [filterOn] Optional property name to use as filter criteria
  * @returns {string|boolean} item.id if found or false
  * @throws {Error} if more than one match is found
  */
@@ -125,12 +154,11 @@ DatabaseContext.prototype.exists = async function(item, filterOn) {
   const category = item.category;
   let filter = {};
   if (!filterOn) {
-    filter = Object.assign(filter, item);
+    filter = dbFilter(Object.assign(filter, item));
     delete filter.id;   //: invalid duplicate criteria
   } else {
-    filter = filterOn;
+    filter = dbFilter(filterOn);
   }
-  filter = propertyConversion.dbFilter(filterOn);
   // TODO: should be able to query and add objects/arrays to Cosmos or query JSON.stringified
   for (let prop in filter) {
     if (item.hasOwnProperty(prop) && typeof(filter[prop]) === 'string') {
@@ -140,9 +168,10 @@ DatabaseContext.prototype.exists = async function(item, filterOn) {
           delete filter[prop];
         }
       } catch (err) {
-        if (err.message.includes('in JSON at position')) {
+        if (err.message.includes('JSON')) {
           //: property remains a filter
         } else {
+          err.message = `${category}.${prop}: ` + err.message;
           throw err;
         }
       }
@@ -154,7 +183,7 @@ DatabaseContext.prototype.exists = async function(item, filterOn) {
   const matches = await this.find(category, filter);
   if (matches.length > 0) {
     if (matches.length === 1) {
-      return matches[0].id;
+      return matches[0].uuid;
     } else {
       throw new Error(`Multiple duplicates found with ${JSON.stringify(filter)}`);
     }
@@ -163,20 +192,11 @@ DatabaseContext.prototype.exists = async function(item, filterOn) {
 }
 
 /**
- * @param {object} newItem 
- * @returns {number} created item id
- */
-DatabaseContext.prototype.create = async function(newItem) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
-  const { resource: createdItem } = await this.container.items.upsert(newItem);
-  //logger.debug(`Item ${createdItem.id} inserted into database`);
-  return { id: createdItem.id, category: createdItem.category };
-}
-
-/**
- * @param {object} newItem The item to look for in the database
- * @param {object} [filterOn] Optional filter on properties defining "exists"
- * @returns {object} {id, category, created}
+ * Creates a new entity in the database if the uniqueness filter is not matched
+ * Note: this is a subset of upsert
+ * @param {Object} newItem The item to look for in the database
+ * @param {Object} [filterOn] Optional filter on properties defining "exists"
+ * @returns {Object} {id, category, created}
  */
 DatabaseContext.prototype.createIfNotExists = async function(newItem, filterOn) {
   if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
@@ -191,9 +211,10 @@ DatabaseContext.prototype.createIfNotExists = async function(newItem, filterOn) 
 }
 
 /**
+ * Returns a specific entity from the database
  * @param {string} id The id in the collection
  * @param {string} category The category in the collection
- * @returns {object} The item from the collection
+ * @returns {Object} The item from the collection
  */
 DatabaseContext.prototype.read = async function(id, category) {
   if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
@@ -204,63 +225,35 @@ DatabaseContext.prototype.read = async function(id, category) {
 }
 
 /**
- * Updates an existing entity in the database
- * TODO: deprecate, replaced by upsert
- * @param {object} item The item to update (must exist in db)
- * @returns {object} { updatedItem, changeCount }
- */
-DatabaseContext.prototype.update = async function(item) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
-  let changeCount = 0;
-  if (item.id) {
-    const oldItem = await this.read(item.id, item.category);
-    let { resource: updatedItem } = await this.container
-      .item(item.id, item.category)
-      .replace(item);
-    for (let prop in oldItem) {
-      if (oldItem.hasOwnProperty(prop) && prop[0] !== '_') {
-        if (updatedItem.hasOwnProperty(prop)) {
-          if (oldItem[prop] !== updatedItem[prop]) {
-            changeCount += 1;
-          }
-        } else {
-          changeCount += 1;
-        }
-      }
-    }
-    //logger.debug(`Item ${updatedItem.id} updated ${changeCount} properties`);
-  } else {
-    throw new Error('Update must include unique id');
-  }
-  return { id: item.id, changeCount: changeCount };
-}
-
-/**
  * Updates an existing entity in the database or creates a new one.
  * Null and undefined values are not pushed in an update.
- * If the item includes a timestamp indicated by _utc it will discard update if
+ * If the item includes a timestamp field indicated by _utc it will discard update if
  * older than that property in the database entity.
- * @param {object} item The item to upsert
- * @param {object} [filterOn] Optional filter on properties defining "exists"
- * @returns {object} { id, changeCount, created }
+ * TODO: update function to 
+ * @param {Object} item The item to upsert
+ * @param {Object} [filterOn] Optional filter on properties defining "exists"
+ * @param {Object} [newerThan] Optional filter on properties involving timestamp
+ * @returns {Object} { id, changeCount, created }
  */
 DatabaseContext.prototype.upsert = async function(item, filterOn) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
+  if (!this.isInitialized) throw new Error('DatabaseContext not initialized');
+  const newItem = Object.assign({}, modelToDb(item));
   let changeCount = 0;
   let changeList = null;
-  let { id, category, created } = await this.createIfNotExists(item, filterOn);
+  let { id, category, created } = await this.createIfNotExists(newItem, filterOn);
   if (!created) {
     let dbItem = await this.read(id, category);
     let revert = Object.assign({}, dbItem);
     changeList = {};
     for (const prop in dbItem) {
-      if (dbItem.hasOwnProperty(prop) && item.hasOwnProperty(prop)) {
-          if (dbItem[prop] != item[prop]
-              && item[prop] !== null
-              && typeof(item[prop]) !== 'undefined') {
-            if (prop.includes('_utc')) {
+      if (dbItem.hasOwnProperty(prop) && newItem.hasOwnProperty(prop)) {
+          if (dbItem[prop] != newItem[prop]
+              && newItem[prop] !== null
+              && typeof(newItem[prop]) !== 'undefined') {
+            //if (prop.includes('_utc')) {
+            if (item.newest && prop.includes(toDb(item.newest))) {
               let dbTime = new Date(dbItem[prop]);
-              let itemTime = new Date(item[prop]);
+              let itemTime = new Date(newItem[prop]);
               if (dbTime > itemTime) {
                 logger.warn(`Discarding update as ${prop} in database ${dbTime} is newer than ${itemTime}`);
                 dbItem = revert;
@@ -271,9 +264,9 @@ DatabaseContext.prototype.upsert = async function(item, filterOn) {
             }
             changeList[prop] = {
               old: dbItem[prop],
-              new: item[prop]
+              new: newItem[prop]
             };
-            dbItem[prop] = item[prop];
+            dbItem[prop] = newItem[prop];
             changeCount += 1;
           }
       }
@@ -282,7 +275,7 @@ DatabaseContext.prototype.upsert = async function(item, filterOn) {
       .item(id, category)
       .replace(dbItem);
     // TODO: check which db metadata gets auto-updated e.g. _ts
-    logger.debug(`Item ${updatedItem.id} updated ${changeCount} properties`);
+    logger.debug(`${category} ${updatedItem.id} updated ${changeCount} properties`);
   } else {
     logger.debug(`${category} added to database (${id})`);
   }
@@ -292,7 +285,7 @@ DatabaseContext.prototype.upsert = async function(item, filterOn) {
 /**
  * @param {string} id The id in the collection
  * @param {string} category The category in the collection
- * @returns {object} result
+ * @returns {Object} result
  */
 DatabaseContext.prototype.delete = async function(id, category) {
   if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }

@@ -1,6 +1,6 @@
 'use strict';
 const Model = require('./Model');
-const category = require('./categories.json').mailbox;
+//const category = require('./categories.json').Mailbox;
 const crypto = require('../../encryption');
 
 /**
@@ -14,7 +14,7 @@ const crypto = require('../../encryption');
  * @param {boolean} enabled Flag whether to include mailbox in operations
  */
 function Mailbox(mailboxId, name, accessId, password, satelliteGatewayName, enabled) {
-  Model.call(this, category);
+  Model.call(this, this.category);
   if (typeof(mailboxId) === 'string' || typeof(mailboxId) === 'number') {
     this.mailboxId = String(mailboxId);
   } else {
@@ -32,6 +32,8 @@ function Mailbox(mailboxId, name, accessId, password, satelliteGatewayName, enab
 
 Mailbox.prototype = Object.create(Model.prototype);
 Mailbox.prototype.constructor = Mailbox;
+Mailbox.prototype.category = 'mailbox';
+Mailbox.prototype.unique = 'mailboxId';
 
 /**
  * Encrypts the password for storage

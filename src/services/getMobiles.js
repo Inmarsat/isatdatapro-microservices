@@ -45,7 +45,6 @@ module.exports = async function(satelliteGatewayName, mailboxId) {
             mobile.mailboxId = mailbox.mailboxId;
             let mobileFilter = { mobileId: mobile.mobileId };
             let { id: id, created: created } = await database.upsert(mobile.toDb(), mobileFilter);
-            //let id = await database.exists(mobile.toDb(), mobileFilter);
             if (!created) {
               logger.debug(`Updating mobile ${mobile.mobileId} (${id})`);
             } else {
@@ -67,7 +66,7 @@ module.exports = async function(satelliteGatewayName, mailboxId) {
         throw err;
       }
     });
-    await database.create(apiCallLog.toDb());
+    await database.upsert(apiCallLog.toDb());
     if (typeof(nextMobileId) === 'string') {
       await getMobiles(mailbox, nextMobileId);
     }

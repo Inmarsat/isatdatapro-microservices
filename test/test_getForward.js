@@ -25,4 +25,4 @@ const testGetForward = async(testMessage, mailboxId) => {
   }
 };
 
-testGetForward(4369476, 590);
+testGetForward(5523986, 590);

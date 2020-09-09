@@ -1,6 +1,6 @@
 'use strict';
 const Model = require('./Model');
-const category = require('./categories.json').message;
+//const category = require('./categories.json').Message;
 const { Payload, Field } = require('./MessagePayloadJson');
 const MESSAGE_TIME_TO_LIVE = 90 * 86400;
 
@@ -18,10 +18,10 @@ const MESSAGE_TIME_TO_LIVE = 90 * 86400;
  * @param {number} size The message size in bytes
  */
 function Message(messageId, mobileId, mailboxId, codecServiceId, codecMessageId, payloadRaw, payloadJson, mailboxTimeUtc, size) {
-  Model.call(this, category);
+  Model.call(this, this.category);
   this.messageId = typeof(messageId) === 'number' ? messageId : -1;
-  this.mobileId = typeof(mobileId) === 'string' ? mobileId : 'UNKNOWN';
-  this.mailboxId = typeof(mailboxId) === 'string' ? mailboxId : 'UNKNOWN';
+  this.mobileId = typeof(mobileId) === 'string' ? mobileId : null;
+  this.mailboxId = typeof(mailboxId) === 'string' ? mailboxId : null;
   this.codecServiceId = typeof(codecServiceId) === 'number' ? codecServiceId : null;
   this.codecMessageId = typeof(codecMessageId) === 'number' ? codecMessageId : null;
   this.payloadRaw = payloadRaw instanceof Array ? payloadRaw : null;
@@ -33,6 +33,7 @@ function Message(messageId, mobileId, mailboxId, codecServiceId, codecMessageId,
 
 Message.prototype = Object.create(Model.prototype);
 Message.prototype.constructor = Message;
+Message.prototype.unique = 'messageId';
 
 /**
  * Returns the codecServiceId (aka SIN) of the message

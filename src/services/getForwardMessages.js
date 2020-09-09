@@ -4,10 +4,9 @@ const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
 const dbUtilities = require('../infra/database/utilities');
-const ApiCallLog = require('../infra/database/models/ApiCallLog');
-const ForwardMessage = require('../infra/database/models/MessageForward');
-const Mobile = require('../infra/database/models/Mobile');
-//const emitter = require('../infra/eventHandler');
+const { ApiCallLog, MessageForward, Mobile } = require('../infra/database/models');
+//const MessageForward = require('../infra/database/models/MessageForward');
+//const Mobile = require('../infra/database/models/Mobile');
 const event = require('../infra/eventHandler');
 
 module.exports = async function(mailboxId, messageIds) {
@@ -39,17 +38,18 @@ module.exports = async function(mailboxId, messageIds) {
       if (success) {
         if (result.messages.length > 0) {
           for (let m = 0; m < result.messages.length; m++) {
-            let message = new ForwardMessage();
+            let message = new MessageForward();
             await message.populate(result.messages[m]);
-            //message.codecServiceId = message.getCodecServiceId();
+            message.codecServiceId = message.getCodecServiceId();
             message.codecMessageId = message.getCodecMessageId();
             message.mailboxId = mailbox.mailboxId;
+            message.updateStatus();
             // TODO: ensure this covers all cases doesn't lose important data
             if (message.errorId !== 0) {
               logger.warn(`Forward message ${message.messageId} error: ${message.error}`);
             }
             let messageFilter = { messageId: message.messageId };
-            let { id, changeList, created } = await database.upsert(message.toDb(), messageFilter);
+            let { id, changeList, created } = await database.upsert(message, messageFilter);
             if (!created) {
               if (Object.keys(changeList).length > 0) {
                 logger.info(`Updated message ${message.messageId}: ${JSON.stringify(changeList)}`);
@@ -59,10 +59,10 @@ module.exports = async function(mailboxId, messageIds) {
               event.newForwardMessage(message);
               let mobile = new Mobile();
               mobile.mobileId = message.mobileId;
-              mobile.mailboxId = mailbox.mailboxId;
-              mobile.mobileWakeupPeriod = message.mobileWakeupPeriod;
+              mobile.mailboxId = message.mailboxId;
+              mobile.mobileWakeupPeriod = message.wakeupPeriodEnum();
               let mobileFilter = { mobileId: message.mobileId };
-              let { id: itemId, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
+              let { id: itemId, created: newMobile } = await database.upsert(mobile, mobileFilter);
               if (newMobile) {
                 logger.info(`Mobile ${mobile.mobileId} added to database (${itemId})`);
                 event.newMobile(mobile);
@@ -81,7 +81,7 @@ module.exports = async function(mailboxId, messageIds) {
         throw err;
       }
     });
-    await database.create(apiCallLog.toDb());
+    await database.upsert(apiCallLog.toDb());
   }
 
   try {

@@ -46,16 +46,16 @@ module.exports = async function(mobileId, commandMessage) {
             } else {
               logger.debug(`Forward Message ID ${message.messageId} assigned by ${idpGateway.name} gateway`);
               let messageFilter = { messageId: message.messageId };
-              let { id: id, created: newMessage } = await database.createIfNotExists(message.toDb(), messageFilter);
+              let { id: id, created: newMessage } = await database.upsert(message, messageFilter);
               if (newMessage) {
                 logger.debug(`Added forward message ${message.messageId} to database (${id})`);
                 event.newForwardMessage(message);
                 let mobile = new Mobile();
                 mobile.mobileId = message.mobileId;
                 mobile.mailboxId = mailbox.mailboxId;
-                mobile.mobileWakeupPeriod = message.mobileWakeupPeriod;
+                mobile.mobileWakeupPeriod = message.wakeupPeriodEnum();
                 let mobileFilter = { mobileId: message.mobileId };
-                let { id: id1, created: newMobile } = await database.upsert(mobile.toDb(), mobileFilter);
+                let { id: id1, created: newMobile } = await database.upsert(mobile, mobileFilter);
                 if (newMobile) {
                   logger.debug(`Mobile ${mobile.mobileId} added to database (${id1})`);
                   event.newMobile(mobile);
@@ -73,7 +73,7 @@ module.exports = async function(mobileId, commandMessage) {
       let apiOutage = await dbUtilities.handleApiFailure(err, idpGateway);
       if (!apiOutage) throw err;
     });
-    await database.create(apiCallLog.toDb());
+    await database.upsert(apiCallLog);
     return message.messageId;
   }
 

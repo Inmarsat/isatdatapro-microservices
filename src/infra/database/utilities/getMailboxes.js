@@ -1,7 +1,7 @@
 'use strict';
 //const logger = require('../../logging').loggerProxy(__filename);
-const Mailbox = require('../models/Mailbox');
-const mailboxCategory = require('../models/categories.json').mailbox;
+const { Mailbox } = require('../models');
+//const category = require('../models/categories.json').Mailbox;
 const propertyConversion = require('./propertyConversion');
 
 /**
@@ -13,21 +13,28 @@ const propertyConversion = require('./propertyConversion');
  */
 async function getMailboxes(database, satelliteGatewayName, mailboxId) {
   let mailboxes = [];
-  const categoryToFind = mailboxCategory;
   let filter = { enabled: true };
-  if (satelliteGatewayName) { filter.satelliteGatewayName = satelliteGatewayName; }
-  if (mailboxId) { filter.mailboxId = String(mailboxId); }
+  if (satelliteGatewayName) filter.satelliteGatewayName = satelliteGatewayName;
+  if (mailboxId) filter.mailboxId = String(mailboxId);
+  /*
   if ('satelliteGatewayName' in filter || 'mailboxId' in filter) {
     filter = propertyConversion.dbFilter(filter);
   }
-  const findResults = await database.find(categoryToFind, filter);
-  findResults.forEach(result => {
-    let mailbox = new Mailbox();
-    mailbox.fromDb(result);
-    mailboxes.push(mailbox);
-  });
-  if (mailboxId) { mailboxes = mailboxes[0] }
-  return mailboxes;
+  */
+  const category = Mailbox.prototype.category;
+  const findMailboxes = await database.find(category, filter);
+  if (findMailboxes.length > 0) {
+    if (mailboxId) {
+      mailboxes = findMailboxes[0];
+    } else {
+      findMailboxes.forEach(mailbox => {
+        mailboxes.push(mailbox);
+      });
+    }
+    return mailboxes;
+  } else {
+    throw new Error(`No Mailboxes found in database`);
+  }
 }
 
 module.exports = getMailboxes;

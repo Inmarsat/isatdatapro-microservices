@@ -48,7 +48,6 @@ module.exports = async function(context) {
           // next time catch any messages that might have been "just missed"
           apiCallLog.nextStartTimeUtc = callTimeUtc;
         }
-        apiCallLog.nextStartId = result.nextStartId;
         if (result.statuses) {
           logger.debug(`Retrieved ${result.statuses.length} statuses for mailbox ${mailbox.mailboxId}`);
           apiCallLog.messageCount = result.statuses.length;
@@ -58,19 +57,25 @@ module.exports = async function(context) {
             await message.populate(status);
             message.updateStatus(status);
             message.mailboxId = mailbox.mailboxId;
-            let messageFilter = { messageId: message.messageId };
-            let { id, changeList, created } = await database.upsert(message.toDb(), messageFilter);
+            const messageFilter = { messageId: message.messageId };
+            let { id, changeList, created } = await database.upsert(message, messageFilter);
             if (!created) {
               logger.debug(`State change list: ${JSON.stringify(changeList)}`);
+              const findMessage = await database.find(message.category, messageFilter);
+              if (findMessage.length > 0) {
+                message = findMessage[0];
+              }
               if (changeList && 'state' in changeList) {
                 let newState = message.getStateName();
                 let newStateReason = message.getStateReason();
                 logger.info(`Message ${message.messageId} ${newState} ${newStateReason}`);
-                event.forwardMessageStateChange(message.messageId, message.mobileId, newStateReason);
+                event.forwardMessageStateChange(message.messageId, 
+                    newState, newStateReason, message.mobileId);
               }
             } else {
               // implies that another API client submitted, trigger event that can get the submission
-              logger.warn(`New Forward message ${message.messageId} from unknown IDP API client`);
+              logger.warn(`New Forward message ${message.messageId}`
+                  + ` from unknown IDP API client on mailbox ${message.mailboxId}`);
               event.otherClientForwardSubmission(message.messageId, message.mailboxId);
             }
           }
@@ -89,7 +94,7 @@ module.exports = async function(context) {
         throw err;
       }
     });
-    await database.create(apiCallLog.toDb());
+    await database.upsert(apiCallLog);
     if (moreToRetrieve) {
       getStatuses(mailbox, moreToRetrieve);
     }

@@ -1,6 +1,6 @@
 'use strict';
 const Model = require('./Model');
-const category = require('./categories.json').satelliteGateway;
+//const category = require('./categories.json').SatelliteGateway;
 
 /**
  * Represents a satellite messaging gateway / network API
@@ -9,7 +9,7 @@ const category = require('./categories.json').satelliteGateway;
  * @param {string} url The URL of the satellite gateway/API
  */
 function SatelliteGateway(name, url) {
-  Model.call(this, category);
+  Model.call(this, this.category);
   this.name = typeof(name) === 'string' ? name : 'UNKNOWN';
   this.url = typeof(url) === 'string' ? url : 'https://';
   this.alive = true;   //: assume true on creation
@@ -18,5 +18,8 @@ function SatelliteGateway(name, url) {
 
 SatelliteGateway.prototype = Object.create(Model.prototype);
 SatelliteGateway.prototype.constructor = SatelliteGateway;
+SatelliteGateway.prototype.category = 'satellite_gateway';
+SatelliteGateway.prototype.unique = 'name';
+SatelliteGateway.prototype.newest = 'aliveChangeTimeUtc';
 
 module.exports = SatelliteGateway;

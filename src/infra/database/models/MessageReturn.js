@@ -1,7 +1,7 @@
 'use strict';
 const Message = require('./Message');
 const { Payload, Fields } = require('./MessagePayloadJson');
-const category = require('./categories.json').messageReturn;
+//const category = require('./categories.json').MessageReturn;
 
 /**
  * Represents a Return (Mobile-Originated) message
@@ -18,7 +18,7 @@ const category = require('./categories.json').messageReturn;
  */
 function MessageReturn(messageId, mobileId, codecServiceId, payloadRaw, payloadJson, mailboxTimeUtc, receiveTimeUtc, satelliteRegion, mailboxId) {
   Message.call(this, messageId, mobileId);
-  this.category = category;
+  //this.category = category;
   this.subcategory = 'return';
   this.codecServiceId = typeof(codecServiceId) === 'number' ? codecServiceId : null;
   if (payloadRaw instanceof Array) {
@@ -39,5 +39,7 @@ function MessageReturn(messageId, mobileId, codecServiceId, payloadRaw, payloadJ
 
 MessageReturn.prototype = Object.create(Message.prototype);
 MessageReturn.prototype.constructor = MessageReturn;
+MessageReturn.prototype.category = 'message_return';
+MessageReturn.prototype.newest = 'receiveTimeUtc';
 
 module.exports = MessageReturn;

@@ -1,6 +1,6 @@
 'use strict';
 const Message = require('./Message');
-const category = require('./categories.json').messageForward;
+//const category = require('./categories.json').MessageForward;
 const idpApi = require('isatdatapro-api');
 
 /**
@@ -14,12 +14,15 @@ const idpApi = require('isatdatapro-api');
  * @param {string} mailboxTimeUtc ISO timestamp when submitted to the network
  * @param {number} state A numeric code representing the delivery state
  * @param {string} stateTimeUtc ISO timestamp of the state
- * @param {number} mobileWakeupPeriod A numberic code representing wakeup period of the modem
- * @param {string} scheduledSendTimeUtc ISO timestamp for message delivery in low power mode
+ * @param {number} mobileSleepSeconds The time the modem is configured to sleep
+ * @param {number} mobileWakeupPeriod Enumerated value for configurable wakeupPeriod
+ * @param {string} scheduledSendTimeUtc ISO timestamp for low power message delivery
  */
-function MessageForward(userMessageId, messageId, mobileId, payloadRaw, payloadJson, mailboxTimeUtc, state, stateTimeUtc, mobileWakeupPeriod, scheduledSendTimeUtc) {
+function MessageForward(userMessageId, messageId, mobileId,
+    payloadRaw, payloadJson, mailboxTimeUtc, state, stateTimeUtc,
+    mobileWakeupPeriod, mobileSleepSeconds, scheduledSendTimeUtc) {
   Message.call(this, messageId, mobileId, payloadRaw, payloadJson, mailboxTimeUtc);
-  this.category = category;
+  //this.category = category;
   this.subcategory = 'forward';
   this.userMessageId = typeof(userMessageId) === 'number' ? userMessageId : null;
   this.referenceNumber = null;
@@ -28,6 +31,7 @@ function MessageForward(userMessageId, messageId, mobileId, payloadRaw, payloadJ
   this.errorId = 0;
   this.error = this.getStateReason();
   this.stateTimeUtc = typeof(stateTimeUtc) === 'string' ? stateTimeUtc : '1970-01-01T00:00:00Z';
+  this.mobileSleepSeconds = typeof(mobileSleepSeconds) === 'number' ? this.mobileSleepSeconds : 0;
   this.mobileWakeupPeriod = typeof(mobileWakeupPeriod) === 'number' ? mobileWakeupPeriod : 0;
   this.scheduledSendTimeUtc = typeof(scheduledSendTimeUtc) === 'string' ? scheduledSendTimeUtc : null;
   this.isClosed = false;
@@ -35,6 +39,8 @@ function MessageForward(userMessageId, messageId, mobileId, payloadRaw, payloadJ
 
 MessageForward.prototype = Object.create(Message.prototype);
 MessageForward.prototype.constructor = MessageForward;
+MessageForward.prototype.category = 'message_forward';
+MessageForward.prototype.newest = 'stateTimeUtc';
 
 /**
  * Returns a human-readable name for the message state
@@ -76,8 +82,8 @@ MessageForward.prototype.getStateReason = function() {
  * Returns a human-readable value of the wakeupPeriod
  * @returns {string}
  */
-MessageForward.prototype.wakeupPeriod = function() {
-  return idpApi.getWakeupPeriod(this.mobileWakeupPeriod);
+MessageForward.prototype.wakeupPeriodEnum = function() {
+  return idpApi.getWakeupPeriod(this.mobileSleepSeconds, true);
 }
 
 /**
@@ -112,9 +118,12 @@ MessageForward.prototype.submit = function() {
 
 /**
  * Updates the message based on a new status retrieved via the IDP API
- * @param {MessageForward} A forward message object with the new status
+ * @param {Objet} [status] forward message object or status
  */
 MessageForward.prototype.updateStatus = function(status) {
+  if (!status) {
+    status = this;
+  }
   this.state = status.state;
   this.stateName = this.getStateName();
   this.stateTimeUtc = status.stateTimeUtc;

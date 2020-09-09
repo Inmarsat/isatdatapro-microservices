@@ -1,16 +1,18 @@
 // TODO CLEANUP/DOC
 // Wraps mysql with promisify for query and end
-// TODO: JSDoc
+// TODO: Implement methods following Cosmos structural reference
 
 const mysql = require('mysql');
 const util = require('util');
 //const dbConfig = require('dotenv').config();
 const dbConfig = require('../../../../test/_private_mysql');
+const logger = require('../../logging').loggerProxy(__filename);
 const models = require('../models');
 const toDb = require('../utilities/propertyConversion').toDb; 
 
 /**
  * Builds up a MySQL schema based on the model definitions
+ * @private
  * @returns {object} schema
  */
 function buildSchema() {
@@ -57,7 +59,7 @@ function buildSchema() {
       }
     } catch (e) {
       if (e.message.includes('is not a constructor')) {
-        console.debug(`Skipping ${modelName} not a Model`);
+        logger.debug(`Skipping ${modelName} not a Model`);
         continue;
       } else {
         throw e;
@@ -68,10 +70,10 @@ function buildSchema() {
 }
 
 /**
- * DbConnection class
+ * DatabaseContext class
  * @constructor
  */
-function DbConnection() {
+function DatabaseContext() {
   this.type = 'MySQL';
   this.conn = mysql.createConnection({
     host: dbConfig.DB_HOST,
@@ -81,40 +83,46 @@ function DbConnection() {
   this.connect = util.promisify(this.conn.connect).bind(this.conn);
   this.query = util.promisify(this.conn.query).bind(this.conn);
   this.end = util.promisify(this.conn.end).bind(this.conn);
+  this.isInitialized = false;
 }
   
 /**
  * Initializes the MySQL database if required
  */
-DbConnection.prototype.initialize = async function() {
-  let exists = await this.query(`SHOW DATABASES LIKE "${dbConfig.DB_NAME}"`);
-  if (exists.length === 0) {
-    await this.query(`CREATE DATABASE IF NOT EXISTS ${dbConfig.DB_NAME}`);
-    console.log(`Created database ${dbConfig.DB_NAME}`);
-    await this.query(`USE ${dbConfig.DB_NAME}`);
-    const schema = buildSchema();
-    for (let tableName in schema) {
-      if (schema.hasOwnProperty(tableName)) {
-        let tQuery = `CREATE TABLE IF NOT EXISTS ${tableName}(`;
-        const table = schema[tableName];
-        for (let column=0; column < table.length; column++) {
-          if (column > 0) tQuery += ', ';
-          tQuery += table[column];
+DatabaseContext.prototype.initialize = async function() {
+  try {
+    let exists = await this.query(`SHOW DATABASES LIKE "${dbConfig.DB_NAME}"`);
+    if (exists.length === 0) {
+      await this.query(`CREATE DATABASE IF NOT EXISTS ${dbConfig.DB_NAME}`);
+      logger.info(`Created database ${dbConfig.DB_NAME}`);
+      await this.query(`USE ${dbConfig.DB_NAME}`);
+      const schema = buildSchema();
+      for (let tableName in schema) {
+        if (schema.hasOwnProperty(tableName)) {
+          let tQuery = `CREATE TABLE IF NOT EXISTS ${tableName}(`;
+          const table = schema[tableName];
+          for (let column=0; column < table.length; column++) {
+            if (column > 0) tQuery += ', ';
+            tQuery += table[column];
+          }
+          tQuery += ')';
+          await this.query(tQuery);
+          logger.debug(`Created table ${tableName}`);
         }
-        tQuery += ')';
-        await this.query(tQuery);
-        console.log(`Created table ${tableName}`);
       }
+    } else {
+      await this.query(`USE ${dbConfig.DB_NAME}`);
+      logger.debug(`Using database ${dbConfig.DB_NAME}`);
     }
-  } else {
-    await this.query(`USE ${dbConfig.DB_NAME}`);
-    console.debug(`Using database ${dbConfig.DB_NAME}`);
+    this.isInitialized = true;
+  } catch (err) {
+    logger.error(err);
   }
 }
 
 /* COMMENT OUT FOR TEST ONLY
 console.log('WARNING: DATABASE CREATION TEST MODE');
-const db = new DbConnection();
+const db = new DatabaseContext();
 async function test() {
   //console.log(JSON.stringify(buildSchema(), null, 2));
   await db.initialize();
@@ -123,4 +131,57 @@ async function test() {
 test();
 // */
 
-module.exports = DbConnection;
+/**
+ * Finds database entries matching a criteria
+ * @param {string} category 
+ * @param {object} filter key/value pairs for equality filtering
+ * @param {object} options e.g. { limit: 1, desc: 'dbTimestamp' }
+ * @returns {object} a list of row objects matching the criteria
+ */
+DatabaseContext.prototype.find = async function(category, filter, options) {
+  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
+  let limit = '';
+  let order = '';
+  if (options) {
+    if (options.limit && typeof(options.limit) === 'number') {
+      limit = `TOP ${options.limit} `;
+    }
+    if (options.desc) {
+      // TODO: validate that key exists in category
+      let k = options.desc;
+      if (k === 'dbTimestamp') { k = '_ts'; }
+      order = ` ORDER BY c.${k} DESC`;
+    } else if (options.asc) {
+      let k = options.asc;
+      if (k === 'dbTimestamp') { k = '_ts'; }
+      order = ` ORDER BY c.${k} ASC`;
+    }
+  }
+  const querySpec = {
+    query: `SELECT ${limit}* FROM c`,
+  };
+  if (typeof(category) === 'string') {
+    querySpec.query += ` WHERE c.category = "${category}"`;
+  }
+  if (filter) {
+    //: iterate key/value pairs adding query filters
+    for (let k in filter) {
+      if (filter.hasOwnProperty(k)) {
+        let v = filter[k];
+        if (typeof(v) === 'string') { v = `"${v}"` }
+        querySpec.query += ` AND c.${k} = ${v}`;
+      }
+    }
+  }
+  querySpec.query += `${order}`;
+  const { resources: items } = await this.container
+    .items.query(querySpec).fetchAll();
+  /*
+  items.forEach(item => {
+    logger.debug(`Found ${item.id}: ${JSON.stringify(item)}`);
+  });
+  */
+  return items;
+}
+
+module.exports = DatabaseContext;

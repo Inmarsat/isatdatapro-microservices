@@ -4,11 +4,14 @@
 'use strict';
 
 const normalizedPath = require('path').join(__dirname);
-let modules = {};
+let models = {};
+const EXCLUDES = ['categories', 'index', 'Model', 'Message', 'MessagePayloadJson'];
 
 require('fs').readdirSync(normalizedPath).forEach(file => {
   let moduleName = file.split('.')[0];
-  modules[moduleName] = require(`./${moduleName}`);
+  if (!EXCLUDES.includes(moduleName)) {
+    models[moduleName] = require(`./${moduleName}`);
+  }
 });
 
-module.exports = modules;
+module.exports = models;

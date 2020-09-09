@@ -9,7 +9,7 @@ function parseFieldValue(field) {
   if (!field.dataType) return field.stringValue;
   switch (field.dataType) {
     case 'boolean':
-      return Boolean(field.stringValue);
+      return (field.stringValue.toLowerCase() === 'true');
     case 'signedint':
     case 'unsignedint':
       return Number(field.stringValue);
@@ -17,14 +17,18 @@ function parseFieldValue(field) {
       return Buffer.from(field.stringValue, 'base64');
     case 'array':
       let items = [];
-      field.arrayElements.forEach(element => {
-        let item = {};
-        element.fields.forEach(field => {
-          item.name = field.name;
-          item.value = parseFieldValue(field);
-        });
-        items.splice(element.index, 0, item);
-      });
+      for (let e=0; e < field.arrayElements.length; e++) {
+        const element = field.arrayElements[e];
+        let subItems = [];
+        for (let f=0; f < element.fields.length; f++) {
+          const field = element.fields[f];
+          subItems[f] = {
+            name: field.name,
+            value: parseFieldValue(field),
+          };
+        }
+        items[e] = subItems;
+      }
       return items;
     case 'enum':
       //TODO: lookup from message definition file?
