@@ -2,9 +2,9 @@
 'use strict';
 
 const logger = require('../infra/logging').loggerProxy(__filename);
-const idpApi = require('isatdatapro-api');
+const { getReturnMessages } = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
-const dbUtilities = require('../infra/database/utilities');
+const { getMailboxes, getMailboxGateway, getHighwatermark, handleApiResponse, handleApiFailure } = require('../infra/database/utilities');
 const { ApiCallLog, MessageReturn, Mobile } = require('../infra/database/models');
 const event = require('../infra/eventHandler');
 const parseModemMeta = require('../infra/messageCodecs/coreModem').parse;
@@ -12,6 +12,8 @@ const parseModemMeta = require('../infra/messageCodecs/coreModem').parse;
 /**
  * Fetches new mobile-originated messages, stores by unique ID and puts
  * API metadata in the database for use as high water mark
+ * Updates Mobile metadata from Core Modem messages
+ * Emits events for NewReturnMessage, NewMobile
  */
 module.exports = async function () {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -27,44 +29,42 @@ module.exports = async function () {
    */
   async function getMessages(mailbox, filter) {
     const operation = 'getReturnMessages';
-    const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
+    const idpGateway = await getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
       password: mailbox.passwordGet(),
     };
     if (!filter) {
-      filter = await dbUtilities.getHighwatermark(database, mailbox.mailboxId, operation);
+      filter = await getHighwatermark(database, mailbox.mailboxId, operation);
     }
     const callTimeUtc = new Date().toISOString();
     let moreToRetrieve = null;
-    let apiCallLog = new ApiCallLog(operation, idpGateway.name, mailbox.mailboxId, callTimeUtc);
+    let apiCallLog = new ApiCallLog(operation, idpGateway.name,
+        mailbox.mailboxId, callTimeUtc);
     logger.debug(`Get Return messages with ${JSON.stringify(filter)}`);
-    await Promise.resolve(idpApi.getReturnMessages(auth, filter, idpGateway.url))
+    await Promise.resolve(getReturnMessages(auth, filter, idpGateway.url))
     .then(async function (result) {
-      let success = await dbUtilities.handleApiResponse(database, result.errorId, apiCallLog, idpGateway);
+      let success = await handleApiResponse(database, result.errorId,
+          apiCallLog, idpGateway);
       if (success) {
-        if (result.nextStartTimeUtc !== '') {
-          apiCallLog.nextStartTimeUtc = result.nextStartTimeUtc;
-        } else {
-          // next time catch any messages that might have been "just missed"
-          apiCallLog.nextStartTimeUtc = callTimeUtc;
-        }
+        apiCallLog.nextStartTimeUtc = result.nextStartTimeUtc;
         apiCallLog.nextStartId = result.nextStartId;
         if (result.messages) {
-          logger.info(`Retrieved ${result.messages.length} messages from mailbox ${mailbox.mailboxId}`);
+          logger.info(`Retrieved ${result.messages.length} messages`
+              + ` from mailbox ${mailbox.mailboxId}`);
           apiCallLog.messageCount = result.messages.length;
           for (let m = 0; m < result.messages.length; m++) {
             let message = new MessageReturn();
-            await message.populate(result.messages[m]);
+            await message.fromApi(result.messages[m]);
             message.mailboxId = mailbox.mailboxId;
-            //message.codecServiceId = message.getCodecServiceId();
+            //message.codecServiceId obtained fromApi
             message.codecMessageId = message.getCodecMessageId();
-            // TODO: confirm if payload array/json cause issues
             let messageFilter = { messageId: message.messageId };
-            //let { id: id1, created: newMessage } = await database.upsert(message.toDb(), messageFilter);
-            let { id: id1, created: newMessage } = await database.upsert(message, messageFilter);
+            let { id: id1, created: newMessage } =
+                await database.upsert(message, messageFilter);
             if (newMessage) {
-              logger.debug(`Added return message ${message.messageId} to database (${id1})`);
+              logger.debug(`Added return message ${message.messageId}`
+                  + ` to database (${id1})`);
               event.newReturnMessage(message);
               let mobile = new Mobile();
               mobile.mobileId = message.mobileId;
@@ -77,40 +77,45 @@ module.exports = async function () {
                 Object.assign(mobile, mobileMeta);
               }
               let mobileFilter = { mobileId: message.mobileId };
-              let { id: id2, created: newMobile } = await database.upsert(mobile, mobileFilter);
+              let { id: id2, created: newMobile } =
+                  await database.upsert(mobile, mobileFilter);
               if (newMobile) {
-                logger.debug(`Mobile ${mobile.mobileId} added to database (${id2})`);
+                logger.debug(`Mobile ${mobile.mobileId} added`
+                    + ` to database (${id2})`);
                 event.newMobile(mobile);
               }
             } else {
-              logger.warn(`Retrieved message ${message.messageId} already in database`);
+              logger.warn(`Retrieved message ${message.messageId}`
+                  + ` already in database (${id1})`);
             }
           }
-          // TODO: test this, probably against Modem Simulator
+          // TODO: test this, probably against a Simulator
           if (result.more) {
-            logger.debug(`More messages to retrieve from mailbox ${mailbox.mailboxId}`);
+            logger.debug(`More messages to retrieve`
+                + ` from mailbox ${mailbox.mailboxId}`);
             moreToRetrieve = { startMessageId: result.nextStartId };
           }
         } else {
-          logger.debug(`No messages to retrieve from mailbox ${mailbox.mailboxId}`);
+          logger.debug(`No messages to retrieve`
+              + ` from mailbox ${mailbox.mailboxId}`);
         }
       }
     })
     .catch(async function (err) {
-      let apiOutage = await dbUtilities.handleApiFailure(err, database, idpGateway);
+      let apiOutage = await handleApiFailure(err, database, idpGateway);
       if (!apiOutage) {
         logger.error(err);
         throw err;
       }
     });
-    await database.upsert(apiCallLog.toDb());
+    await database.upsert(apiCallLog);
     if (moreToRetrieve) {
       getMessages(mailbox, moreToRetrieve);
     }
   }
 
   try {
-    const mailboxes = await dbUtilities.getMailboxes(database);
+    const mailboxes = await getMailboxes(database);
     if (mailboxes.length > 0) {
       for (let i = 0; i < mailboxes.length; i++) {
         let activeMailbox = mailboxes[i];
@@ -120,11 +125,8 @@ module.exports = async function () {
       logger.warn('No enabled Mailboxes found in database');
     }
   } catch (err) {
-    switch(err.message) {
-      default:
-        logger.error(err);
-        throw err;
-    }
+    logger.error(err);
+    throw err;
   } finally {
     await database.close();
     logger.debug(`<<<< ${thisFunction.name} exit`);

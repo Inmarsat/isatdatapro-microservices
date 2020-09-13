@@ -1,10 +1,13 @@
 'use strict';
+
 //const logger = require('../../logging').loggerProxy(__filename);
+const models = require('../models');
 
 /**
  * Converts camelCase to snake_case
  * @private
  * @param {string} propName The property name in camelCase
+ * @returns {string} snake_case property name
  */
 function camelToSnakeCase_(propName) {
   let snake_case = propName;
@@ -20,6 +23,7 @@ function camelToSnakeCase_(propName) {
  * Converts snake_case to camelCase
  * @private
  * @param {string} propName The property name in snake_case
+ * @returns {string} camelCase property name
  */
 function snakeToCamelCase_(propName) {
   let camelCase = propName;
@@ -33,9 +37,10 @@ function snakeToCamelCase_(propName) {
 
 /**
  * Converts a property and optionally its value to database-compatible
+ * @private
  * @param {string} modelProp The model property
  * @param {any} [modelValue] Optional property value
- * @returns {string|object} if modelValue is present returns {dbProp, dbValue}
+ * @returns {(string|{dbProp: string, dbValue: any})} the db property name/object
  */
 function toDb(modelProp, modelValue) {
   let dbProp = camelToSnakeCase_(modelProp);
@@ -51,9 +56,10 @@ function toDb(modelProp, modelValue) {
 
 /**
  * Converts database-compatible to model property and optionally its value
+ * @private
  * @param {string} dbProp The property name/key from the database
- * @param {any} [value] Optional value stored in the database
- * @returns {string|object} if value is present returns {property, value}
+ * @param {any} [dbValue] Optional value stored in the database
+ * @returns {(string|{prop: string, value: any})} the model property name/object
  */
 function fromDb(dbProp, dbValue) {
   let modelProp = snakeToCamelCase_(dbProp);
@@ -77,9 +83,59 @@ function fromDb(dbProp, dbValue) {
 }
 
 /**
+ * Returns an Entity based on Model defined by category from a database read
+ * camelCase tags, JSON objects and Arrays
+ * @private
+ * @param {Object} dbItem The raw item retrieved from the database
+ * @param {boolean} [includeDbId] Adds the primary database key id to the Model
+ * @returns {Object} entity based on Model category
+ * @throws {Error} if no model matching the item.category is found
+ */
+function modelFromDb(dbItem, includeDbId) {
+  const category = dbItem.category;
+  let model = null;
+  for (const modelName in models) {
+    if (category === models[modelName].prototype.category) {
+      model = new models[modelName];
+      break;
+    }
+  }
+  if (!model) throw new Error(`No model found for ${category}`);
+  const modelProperties = Object.getOwnPropertyNames(model);
+  modelProperties.forEach(prop => {
+    const dbProp = toDb(prop);
+    if (model.hasOwnProperty(prop) && dbItem.hasOwnProperty(dbProp)) {
+      const { modelValue } = fromDb(dbProp, dbItem[dbProp]);
+      model[prop] = modelValue;
+    }
+  });
+  if (includeDbId) model.id = dbItem.id;
+  return model;
+}
+
+/**
+ * Returns an database-formatted entry from a Model/Entity
+ * snake_case tags, stringified JSON/Arrays
+ * @private
+ * @param {Object} item The Model-defined Entity
+ * @returns {Object} database-compatible entry
+ */
+function modelToDb(item) {
+  const dbItem = {};
+  const itemProperties = Object.getOwnPropertyNames(item);
+  itemProperties.forEach(prop => {
+    if (item.hasOwnProperty(prop)) {
+      const { dbProp, dbValue } = toDb(prop, item[prop]);
+      dbItem[dbProp] = dbValue;
+    }
+  });
+  return dbItem;
+}
+
+/**
  * Returns a database-compatible filter for queries
- * @param {object} filter A filter key/value set
- * @returns {object} the database-compatible filter
+ * @param {Object} filter A filter key/value set
+ * @returns {Object} the database-compatible filter
  */
 function dbFilter(filter) {
   let newFilter = {};
@@ -91,4 +147,8 @@ function dbFilter(filter) {
   return newFilter;
 }
 
-module.exports = { toDb, fromDb, dbFilter };
+module.exports = {
+  dbFilter,
+  modelToDb,
+  modelFromDb,
+};

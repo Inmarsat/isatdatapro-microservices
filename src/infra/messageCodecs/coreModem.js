@@ -4,8 +4,6 @@ const codecServiceId = 0;
 const logger = require('../logging').loggerProxy(__filename);
 const { Mobile, MessageReturn, MessageForward } = require('../database/models');
 const { Payload, Field } = require('../database/models/MessagePayloadJson');
-//const MessageReturn = require('../database/models/MessageReturn');
-//const MessageForward = require('../database/models/MessageForward');
 const { parseFieldValue } = require('./commonMessageFormat');
 const event = require('../eventHandler');
 
@@ -34,41 +32,6 @@ function timestampFromMinuteDay(year, month, dayOfMonth, minuteOfDay) {
   const tsDate = new Date(year, month, dayOfMonth, hour, minute);
   return tsDate;
 }
-
-/**
- * Returns the interpreted value of the field based on dataType
- * @param {object} field A payload field { name, value, dataType }
- */
-/*
-function parseFieldValue(field) {
-  if (!field.dataType) return field.stringValue;
-  switch (field.dataType) {
-    case 'boolean':
-      return Boolean(field.stringValue);
-    case 'signedint':
-    case 'unsignedint':
-      return Number(field.stringValue);
-    case 'data':
-      return Buffer.from(field.stringValue, 'base64');
-    case 'array':
-      let items = [];
-      field.arrayElements.forEach(element => {
-        let item = {};
-        element.fields.forEach(field => {
-          item.name = field.name;
-          item.value = parseFieldValue(field);
-        });
-        items.splice(element.index, 0, item);
-      });
-      return items;
-    case 'enum':
-      //TODO: lookup from message definition file?
-    case 'string':
-    default:
-      return field.stringValue;
-  }
-}
-*/
 
 /**
  * Sets up mobile metadata template for update
@@ -412,12 +375,14 @@ const METRICS_PERIODS = {
 };
 
 /**
- * Returns a string value of the metrics period, since it may not be an integer (e.g. 'partial minute' is non-specific)
- * @param {string | number} periodCode The period over which metrics were calculated by the modem
- * @returns {string}
+ * Returns a string value of the metrics period, since it may not be an integer 
+ * (e.g. 'partial minute' is non-specific)
+ * @param {(string|number)} periodCode The period over which metrics were calculated by the modem
+ * @returns {string} the enumerated period
+ * @throws {Error} if periodCode invalid
  */
 function getMetricsPeriod(periodCode) {
-  let period = 'UNKNOWN';
+  let period;
   switch (periodCode) {
     case 0:
     case 'SinceReset':
@@ -457,7 +422,7 @@ function getMetricsPeriod(periodCode) {
     case 8:
     case 7:
     default:
-      period = 'Reserved';
+      throw new Error(`Unsupported Metrics period ${periodCode}`);
   }
   return period;
 }
@@ -496,6 +461,12 @@ function parseModemRxMetrics(message) {
   event.modemRxMetricsReply(eventDetail);
 }
 
+/**
+ * Returns metadata by parsing an encoded metric
+ * @private
+ * @param {Object} txMetrics 
+ * @returns {{segmentsTotal, segmentsOk, segmentsFailed}}
+ */
 function processTxMetric(txMetrics) {
   let meta = {};
   txMetrics.forEach(metric => {
@@ -672,9 +643,10 @@ function parseModemBroadcastIds(message) {
     message.payloadJson.fields.forEach(field => {
       switch (field.name) {
         case 'broadcastIDs':
+          //TODO: determine if zero values should populate the array
           parseFieldValue(field).forEach(entry => {
-            if (entry.value !== 0) {
-              mobile.broadcastIds.push(entry.value);
+            if (entry[0].value !== 0) {
+              mobile.broadcastIds.push(entry[0].value);
             }
           });
           break;
@@ -694,8 +666,9 @@ function parseModemBroadcastIds(message) {
 
 /**
  * Encodes the modem reset message based on the reset type
- * @param {string | number | undefined} resetType
+ * @param {(string|number)} [resetType='ModemFlush']
  * @returns {MessageForward} Message and raw payload number array
+ * @throws {Error} on invalid resetType
  */
 function commandReset(resetType) {
   const resetTypes = {
@@ -705,16 +678,16 @@ function commandReset(resetType) {
     'TerminalModemFlush': 3,
   };
   if (typeof (resetType) === 'undefined') {
-    resetType = 'TerminalModemFlush';
+    resetType = 'ModemFlush';
   } else if (typeof(resetType) === 'number') {
     for (let t in resetTypes) {
       if (resetTypes[t] === resetType) {
         resetType = t;
       }
     }
-    if (typeof(resetType) === 'number') {
-      throw new Error(`Invalid resetType ${resetType}`);
-    }
+  }
+  if (!(resetType in resetTypes)) {
+    throw new Error(`Invalid resetType ${resetType}`)
   }
   let payloadJson = new Payload('reset', 0, 68, true);
   payloadJson.addField(new Field('resetType', 'enum', resetType));
@@ -807,20 +780,23 @@ function commandGetModemConfiguration() {
  * @returns {MessageForward} The message
  */
 function commandGetLastRxInfo() {
+  console.warn('Feature not tested');
   let payloadJson = new Payload('getLastRxInfo', 0, 98, true);
   // message.payloadRaw = [0, 98];
   return payloadJson;
 }
 
 /**
- * 
- * @param {string} metricsPeriod 
+ * Returns a JSON payload to query modem Transmit metrics
+ * @param {string} [metricsPeriod='LastPartialMinute'] 
  * @returns {MessageForward} The forward message
  */
 function commandGetRxMetrics(metricsPeriod) {
   console.warn('Feature not tested');
-  if (!(metricsPeriod in METRICS_PERIODS)) {
-    throw new Error(`Invalid metrics period ${metricsPeriod}`);
+  try {
+    metricsPeriod = getMetricsPeriod(metricsPeriod);
+  } catch (e) {
+    metricsPeriod = 'LastPartialMinute';
   }
   let payloadJson = new Payload('getRxMetrics', 0, 99, true);
   payloadJson.addField(new Field('reserved', 'boolean', true));
@@ -830,14 +806,16 @@ function commandGetRxMetrics(metricsPeriod) {
 }
 
 /**
- * 
- * @param {string} metricsPeriod 
+ * Returns a JSON payload to query modem Transmit metrics
+ * @param {string} [metricsPeriod='LastPartialMinute'] 
  * @returns {MessageForward} The forward message
  */
 function commandGetTxMetrics(metricsPeriod) {
   console.warn('Feature not tested');
-  if (!(metricsPeriod in METRICS_PERIODS)) {
-    throw new Error(`Invalid metrics period ${metricsPeriod}`);
+  try {
+    metricsPeriod = getMetricsPeriod(metricsPeriod);
+  } catch (e) {
+    metricsPeriod = 'LastPartialMinute';
   }
   let payloadJson = new Payload('getRxMetrics', 0, 100, true);
   payloadJson.addField(new Field('Reserved', 'boolean', true));

@@ -16,6 +16,6 @@ async function testManage() {
   }
 };
 
-const testInfra = require('./testMailboxesGateways');
+const testInfra = require('./_private_testMailboxesGateways');
 
 //testManage();

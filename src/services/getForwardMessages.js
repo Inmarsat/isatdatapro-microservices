@@ -3,12 +3,16 @@
 const logger = require('../infra/logging').loggerProxy(__filename);
 const idpApi = require('isatdatapro-api');
 const DatabaseContext = require('../infra/database/repositories');
-const dbUtilities = require('../infra/database/utilities');
+const { getMailboxes, getStatusMailbox, getMailboxGateway, handleApiResponse, handleApiFailure } = require('../infra/database/utilities');
 const { ApiCallLog, MessageForward, Mobile } = require('../infra/database/models');
-//const MessageForward = require('../infra/database/models/MessageForward');
-//const Mobile = require('../infra/database/models/Mobile');
 const event = require('../infra/eventHandler');
 
+/**
+ * Retrieves a specific list of messages by unique ID
+ * Emits events for NewForwardMessage, NewMobile
+ * @param {number|string} mailboxId The unique Mailbox ID to retrieve from
+ * @param {(number[]|number)} messageIds Unique/list of message IDs to retrieve
+ */
 module.exports = async function(mailboxId, messageIds) {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
@@ -16,55 +20,72 @@ module.exports = async function(mailboxId, messageIds) {
   const database = new DatabaseContext();
   await database.initialize();
 
+  /**
+   * Retrieves a forward message by ID and puts in the database
+   * @param {number} messageId The forward message ID
+   * @param {(string|number)} mailboxId The unique Mailbox ID
+   */
   async function getMessage(messageId, mailboxId) {
     const operation = 'getFowardMessages';
     let mailbox;
     if (mailboxId) {
-      mailbox = await dbUtilities.getMailboxes(database, undefined, String(mailboxId));
+      mailbox = await getMailboxes(database, undefined, String(mailboxId));
     } else {
-      mailbox = await dbUtilities.getStatusMailbox(database, messageId);
+      mailbox = await getStatusMailbox(database, messageId);
     }
-    const idpGateway = await dbUtilities.getMailboxGateway(database, mailbox);
+    const idpGateway = await getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
       password: mailbox.passwordGet(),
     };
     const callTimeUtc = new Date().toISOString();
-    let apiCallLog = new ApiCallLog(operation, idpGateway.name, mailbox.mailboxId, callTimeUtc);
-    await Promise.resolve(idpApi.getForwardMessages(auth, messageId, idpGateway.url))
+    let apiCallLog = new ApiCallLog(operation, idpGateway.name,
+        mailbox.mailboxId, callTimeUtc);
+    await Promise.resolve(idpApi.getForwardMessages(auth, messageId,
+        idpGateway.url))
     .then(async function (result) {
       logger.debug(`${operation} result: ${JSON.stringify(result)}`);
-      let success = await dbUtilities.handleApiResponse(database, result.errorId, apiCallLog, idpGateway);
+      let success = await handleApiResponse(database, 
+          result.errorId, apiCallLog, idpGateway);
       if (success) {
         if (result.messages.length > 0) {
           for (let m = 0; m < result.messages.length; m++) {
             let message = new MessageForward();
-            await message.populate(result.messages[m]);
+            await message.fromApi(result.messages[m]);
             message.codecServiceId = message.getCodecServiceId();
             message.codecMessageId = message.getCodecMessageId();
             message.mailboxId = mailbox.mailboxId;
             message.updateStatus();
             // TODO: ensure this covers all cases doesn't lose important data
             if (message.errorId !== 0) {
-              logger.warn(`Forward message ${message.messageId} error: ${message.error}`);
+              logger.warn(`Forward message ${message.messageId}`
+                  + ` error: ${message.error}`);
             }
             let messageFilter = { messageId: message.messageId };
-            let { id, changeList, created } = await database.upsert(message, messageFilter);
+            let { id, changeList, created } = await database.upsert(message, 
+                messageFilter);
             if (!created) {
-              if (Object.keys(changeList).length > 0) {
-                logger.info(`Updated message ${message.messageId}: ${JSON.stringify(changeList)}`);
+              if (changeList) {
+                logger.info(`Updated message ${message.messageId}:`
+                    + ` ${JSON.stringify(changeList)}`);
+              } else {
+                logger.debug(`Message ${message.messageId}`
+                    + ` already in database (${id})`);
               }
             } else {
-              logger.info(`Added forward message ${message.messageId} to database (${id})`);
+              logger.info(`Added forward message ${message.messageId}`
+                  + ` to database (${id})`);
               event.newForwardMessage(message);
               let mobile = new Mobile();
               mobile.mobileId = message.mobileId;
               mobile.mailboxId = message.mailboxId;
               mobile.mobileWakeupPeriod = message.wakeupPeriodEnum();
               let mobileFilter = { mobileId: message.mobileId };
-              let { id: itemId, created: newMobile } = await database.upsert(mobile, mobileFilter);
+              let { id: itemId, created: newMobile } =
+                  await database.upsert(mobile, mobileFilter);
               if (newMobile) {
-                logger.info(`Mobile ${mobile.mobileId} added to database (${itemId})`);
+                logger.info(`Mobile ${mobile.mobileId} added`
+                    + ` to database (${itemId})`);
                 event.newMobile(mobile);
               }
             }
@@ -75,13 +96,13 @@ module.exports = async function(mailboxId, messageIds) {
       }
     })
     .catch(async (err) => {
-      let apiOutage = await dbUtilities.handleApiFailure(err, idpGateway);
+      let apiOutage = await handleApiFailure(err, idpGateway);
       if (!apiOutage) {
         logger.error(err);
         throw err;
       }
     });
-    await database.upsert(apiCallLog.toDb());
+    await database.upsert(apiCallLog);
   }
 
   try {

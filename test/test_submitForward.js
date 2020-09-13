@@ -1,5 +1,4 @@
 const submitMessage = require('../src/services/submitForwardMessages');
-const testDevice = require('../config/local.settings.json').testTerminal;
 const events = require('../src/infra/eventHandler').emitter;
 
 const testSubmitForward = async(mobileId, message) => {
@@ -24,8 +23,43 @@ const testSubmitForward = async(mobileId, message) => {
 };
 
 //testSubmitForward(testDevice, [0, 72]);
-const modemCommand = {
+const ping = {
   command: 'ping',
   params: null,
 };
-testSubmitForward(testDevice, modemCommand);
+const reset = {
+  command: 'reset',
+  params: 'ModemPreserve',
+};
+const setWakeupPeriod = {
+  command: 'setWakeupPeriod',
+  params: 'Seconds30',
+};
+const mute = {
+  command: 'setTxMute',
+  params: true,
+};
+const unmute = {
+  command: 'setTxMute',
+  params: false,
+};
+const getLocation = {
+  command: 'getLocation',
+};
+const getConfiguration = {
+  command: 'getConfiguration',
+};
+const getBroadcastIds = {
+  command: 'getBroadcastIds',
+};
+const getTxMetrics = {
+  command: 'getTxMetrics',
+  params: 'SinceReset'
+};
+const getRxMetrics = {
+  command: 'getRxMetrics',
+  params: undefined,
+};
+
+const testDevice = require('../config/local.settings.json').testTerminal;
+testSubmitForward(testDevice, ping);

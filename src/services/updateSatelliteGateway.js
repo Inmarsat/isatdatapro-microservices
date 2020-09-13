@@ -2,16 +2,17 @@
 
 const logger = require('../infra/logging').loggerProxy(__filename);
 const DatabaseContext = require('../infra/database/repositories');
-const SatelliteGateway = require('../infra/database/models/SatelliteGateway');
+const { SatelliteGateway } = require('../infra/database/models');
 
 /**
- * 
- * @param {object} gatewayParameters 
+ * Adds or updates a Satellite Gateway in the database
+ * @param {Object} gatewayParameters 
+ * @param {string} gatewayParameters.name A shorthand name e.g. Inmarsat
+ * @param {string} gatewayParameters.url The base URL of the REST API
  */
 module.exports = async function (gatewayParameters) {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
-  const callTime = new Date().toISOString();
   const database = new DatabaseContext();
   await database.initialize();
 
@@ -24,12 +25,14 @@ module.exports = async function (gatewayParameters) {
         gatewayParameters.url
       );
       let uniFilter = { name: gateway.name };
-      let { id , changeList, created } = await database.upsert(gateway.toDb(), uniFilter);
-      //TODO: validate auth/connectivity using getMobiles;
+      let { id, changeList, created } =
+          await database.upsert(gateway, uniFilter);
       if (created) {
-        logger.debug(`Added satellite gateway ${gateway.name} to database (${id})`);
+        logger.debug(`Added satellite gateway ${gateway.name}`
+            + ` to database (${id})`);
       } else {
-        logger.debug(`Changes to satellite gateway ${gateway.name}: ${JSON.stringify(changeList)}`);
+        logger.debug(`Changes to satellite gateway ${gateway.name}:`
+            + ` ${JSON.stringify(changeList)}`);
       }
     } else {
       throw new Error('Invalid satellite gateway parameters');

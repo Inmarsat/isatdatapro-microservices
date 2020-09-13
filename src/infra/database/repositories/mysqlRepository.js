@@ -1,14 +1,14 @@
-// TODO CLEANUP/DOC
-// Wraps mysql with promisify for query and end
-// TODO: Implement methods following Cosmos structural reference
+//: Wraps mysql with promisify for query and end
+'use strict';
 
 const mysql = require('mysql');
 const util = require('util');
-//const dbConfig = require('dotenv').config();
-const dbConfig = require('../../../../test/_private_mysql');
+const dbConfig = require('dotenv').config();
+//const dbConfig = require('../../../../test/_private_mysql');
+
 const logger = require('../../logging').loggerProxy(__filename);
+const { modelToDb, modelFromDb, dbFilter } = require('./propertyConversion');
 const models = require('../models');
-const toDb = require('../utilities/propertyConversion').toDb; 
 
 /**
  * Builds up a MySQL schema based on the model definitions
@@ -25,9 +25,7 @@ function buildSchema() {
         const table = [];
         table.push('id INT NOT NULL AUTO_INCREMENT, PRIMARY KEY(id)');
         const propNames = Object.getOwnPropertyNames(model);
-        for (let i=0; i < propNames.length; i++) {
-          const propName = propNames[i];
-          if (propName === 'category') continue;
+        propNames.forEach(propName => {
           const propVal = model[propName];
           let mySqlDef = `${toDb(propName)}`;
           switch(typeof propVal) {
@@ -54,7 +52,9 @@ function buildSchema() {
             mySqlDef += ` DEFAULT NULL`;
           }
           table.push(mySqlDef);
-        }
+        });
+        table.push(`_ts DATETIME DEFAULT CURRENT_TIMESTAMP`
+            + ` ON UPDATE CURRENT_TIMESTAMP`);
         schema[model.category] = table;
       }
     } catch (e) {
@@ -120,68 +120,211 @@ DatabaseContext.prototype.initialize = async function() {
   }
 }
 
-/* COMMENT OUT FOR TEST ONLY
-console.log('WARNING: DATABASE CREATION TEST MODE');
-const db = new DatabaseContext();
-async function test() {
-  //console.log(JSON.stringify(buildSchema(), null, 2));
-  await db.initialize();
-  await db.end();
-}
-test();
-// */
-
 /**
- * Finds database entries matching a criteria
+ * Returns database entries matching a criteria
  * @param {string} category 
- * @param {object} filter key/value pairs for equality filtering
- * @param {object} options e.g. { limit: 1, desc: 'dbTimestamp' }
- * @returns {object} a list of row objects matching the criteria
+ * @param {Object} [include] key/value pairs for equality filtering
+ * @param {Object} [exclude] key/value pairs for inequality filtering
+ * @param {Object} [options] e.g. { limit: 1, desc: 'dbTimestamp' }
+ * @param {number} [options.limit] Maximum items to return
+ * @param {string} [options.desc] Property to sort descending (e.g. _ts timestamp)
+ * @param {string} [options.asc] Property to sort descending (e.g. _ts timestamp)
+ * @returns {Object[]} a list of row objects matching the criteria
+ * @throws {Error} if database not initialized
+ * @throws {Error} if category is invalid
  */
-DatabaseContext.prototype.find = async function(category, filter, options) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
+DatabaseContext.prototype.find =
+    async function(category, include, exclude, options) {
+  if (!this.isInitialized) throw new Error('DatabaseContext not initialized');
+  if (!category || typeof(category) !== 'string') {
+    throw new Error(`Invalid category ${category}`);
+  }
+  const table = category;
   let limit = '';
   let order = '';
   if (options) {
     if (options.limit && typeof(options.limit) === 'number') {
-      limit = `TOP ${options.limit} `;
+      limit = ` LIMIT ${options.limit}`;
     }
     if (options.desc) {
-      // TODO: validate that key exists in category
+      // TODO: validate that key exists in model (based on category)
       let k = options.desc;
-      if (k === 'dbTimestamp') { k = '_ts'; }
-      order = ` ORDER BY c.${k} DESC`;
+      if (k === 'dbTimestamp') k = '_ts';
+      order = ` ORDER BY ${k} DESC`;
     } else if (options.asc) {
       let k = options.asc;
-      if (k === 'dbTimestamp') { k = '_ts'; }
-      order = ` ORDER BY c.${k} ASC`;
+      if (k === 'dbTimestamp') k = '_ts';
+      order = ` ORDER BY ${k} ASC`;
     }
   }
   const querySpec = {
-    query: `SELECT ${limit}* FROM c`,
+    query: `SELECT * FROM ${table} WHERE category="${category}"`,
   };
-  if (typeof(category) === 'string') {
-    querySpec.query += ` WHERE c.category = "${category}"`;
+  if (include) {
+    include = dbFilter(include);
+    for (let k in include) {
+      if (include.hasOwnProperty(k)) {
+        let v = include[k];
+        if (typeof(v) === 'string') v = `"${v}"`;
+        querySpec.query += ` AND ${k}=${v}`;
+      }
+    }
   }
-  if (filter) {
-    //: iterate key/value pairs adding query filters
-    for (let k in filter) {
-      if (filter.hasOwnProperty(k)) {
-        let v = filter[k];
-        if (typeof(v) === 'string') { v = `"${v}"` }
-        querySpec.query += ` AND c.${k} = ${v}`;
+  if (exclude) {
+    exclude = dbFilter(exclude);
+    for (let k in exclude) {
+      if (exclude.hasOwnProperty(k)) {
+        let v = exclude[k];
+        if (typeof(v) === 'string') v = `"${v}"`;
+        querySpec.query += ` AND ${k}<>${v}`;
       }
     }
   }
   querySpec.query += `${order}`;
-  const { resources: items } = await this.container
-    .items.query(querySpec).fetchAll();
-  /*
+  const items = await this.query(querySpec.query);
+  logger.debug(`Found ${items.length} matching ${category}(es)`);
+  const entities = [];
   items.forEach(item => {
-    logger.debug(`Found ${item.id}: ${JSON.stringify(item)}`);
+    entities.push(modelFromDb(item, true));
   });
-  */
-  return items;
+  return entities;
+}
+
+/**
+ * Updates an existing entity in the database or creates a new one.
+ * Null and undefined values are not pushed in an update.
+ * If the item includes a .newest prototype property it will discard 
+ * update if older than that property in the database entity.
+ * @param {Object} item The item to upsert
+ * @param {Object} [filterOn] Optional filter on properties defining "exists"
+ * @param {Object} [newerThan] Optional filter on properties involving timestamp
+ * @returns {{ id: string, changeList: Object, created: boolean }}
+ * @throws {Error} if database not initialized
+ * @throws {Error} if item.category is invalid
+ * @throws {Error} if filterOn is not an Object
+ * @throws {Error} if multiple matching entries found in database/table
+ */
+DatabaseContext.prototype.upsert = async function(item, filterOn) {
+  if (!this.isInitialized) throw new Error('DatabaseContext not initialized');
+  if (!item.category || typeof(item.category) !== 'string') {
+    throw new Error(`Invalid category ${item.category}`);
+  }
+  const table = item.category;
+  let created = false;
+  let id;
+  let dbItem;
+  let changeList = null;
+  if (!filterOn && item.unique) {
+    filterOn = {};
+  } else if (!(typeof filterOn === 'object')) {
+      throw new Error(`filterOn must be Object`);
+  }
+  if (item.unique) {
+    filterOn[item.unique] = item[item.unique];
+  }
+  const found = await this.find(item.category, filterOn);
+  if (found.length === 0) {
+    created = true;
+    dbItem = item;
+  } else if (found.length > 1) {
+    errStr = (`${found.length} ${item.category} entities matching`
+        + ` ${JSON.stringify(filterOn)}`);
+    logger.error(errStr);
+    throw new Error(errStr);
+  } else {
+    changeList = {};
+    dbItem = found[0];
+    id = dbItem.id;
+    const revert = Object.assign({}, dbItem);
+    for (const prop in dbItem) {
+      if (dbItem.hasOwnProperty(prop) && item.hasOwnProperty(prop)) {
+        //TODO: check if Object/JSON and Array work
+        if (typeof item[prop] === 'undefined' || item[prop] === null) continue;
+        if (item.newest && prop.includes(item.newest)) {
+          let dbTime = new Date(dbItem[prop]);
+          let itemTime = new Date(item[prop]);
+          if (dbTime > itemTime) {
+            logger.warn(`Discarding ${item.category} update as ${prop}`
+                + ` in database ${dbTime} is newer than ${itemTime}`);
+            dbItem = revert;
+            changeList = null;
+            break;
+          }
+        }
+        if (typeof item[prop] === 'object') {
+          if (JSON.stringify(dbItem[prop]) === JSON.stringify(item[prop])) {
+            continue;
+          }
+        }
+        if (dbItem[prop] == item[prop]) continue;
+        changeList[prop] = {
+          old: dbItem[prop],
+          new: item[prop]
+        };
+        dbItem[prop] = item[prop];
+      }
+    }
+    if (Object.keys(changeList).length === 0) changeList = null;
+  }
+  if (created || changeList) {
+    try {
+      const query = `REPLACE INTO ${table} SET ?`;
+      const { insertId } = await this.query(query, [modelToDb(dbItem)]);
+      id = insertId;
+    } catch (e) {
+      logger.error(e);
+    }
+  }
+  if (created) {
+    logger.debug(`Inserted ${item.category} (${id})`);
+  } else if (changeList) {
+    logger.debug(`Updated ${item.category} ${JSON.stringify(changeList)}`);
+  } else {
+    logger.debug(`No updates to ${item.category} (${id})`);
+  }
+  return { id: id, changeList: changeList, created: created };
+}
+
+/**
+ * Deletes an item from the database
+ * @param {Object} item The category in the collection
+ * @returns {boolean} result
+ * @throws {Error} if database not initialized
+ * @throws {Error} if item.category is invalid
+ */
+DatabaseContext.prototype.delete = async function(item) {
+  if (!this.isInitialized) throw new Error('DatabaseContext not initialized');
+  if (!item.category || typeof(item.category) !== 'string') {
+    throw new Error(`Invalid category ${item.category}`);
+  }
+  const table = item.category;
+  const filterOn = {};
+  filterOn[item.unique] = item[item.unique];
+  const found = await this.find(item.category, filterOn);
+  if (found.length === 1) {
+    let query = `DELETE FROM ${table} WHERE id=${found[0].id}`;
+    try {
+      const { affectedRows } = await this.query(query);
+      logger.debug(`Deleted ${affectedRows} ${item.category}(s)`);
+      return true;
+    } catch (e) {
+      logger.error(e);
+    }
+  }
+  return false;
+}
+
+/**
+ * Closes the database connection
+ */
+DatabaseContext.prototype.close = async function() {
+  try {
+    await this.end();
+    logger.debug('Success: closed MySQL connection');
+  } catch (e) {
+    logger.error(e);
+    throw e;
+  }
 }
 
 module.exports = DatabaseContext;

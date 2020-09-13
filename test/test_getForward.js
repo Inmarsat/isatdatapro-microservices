@@ -16,7 +16,8 @@ const testGetForward = async(testMessage, mailboxId) => {
     events.addListener('NewMobile', (detail) => {
       console.log('New Mobile found: ' + detail);
     });
-    events.addListener('NewForwardMessage', (messageId, mobileId, mailboxId, source) => {
+    events.addListener('NewForwardMessage',
+        (messageId, mobileId, mailboxId, source) => {
       console.log(`Forward messageId: ${messageId} to ${mobileId}`);
     });
     await getMessage(String(mailboxId), [testMessage]);
@@ -25,4 +26,6 @@ const testGetForward = async(testMessage, mailboxId) => {
   }
 };
 
-testGetForward(5523986, 590);
+const testMessageId = require('../config/local.settings.json').testFwdId;
+const testMailbox = require('../config/local.settings.json').testMailbox;
+testGetForward(testMessageId, testMailbox);

@@ -1,17 +1,19 @@
+//: Database operations for Cosmos DB
 'use strict';
+
 require('dotenv').config();
 const logger = require('../../logging').loggerProxy(__filename);
-//TODO: migrate toDb and fromDb operations from model into repository
-const models = require('../models');
-//const categories = require('../models/categories.json');
-const { toDb, fromDb, dbFilter } = require('../utilities/propertyConversion');
+const { modelToDb, modelFromDb, dbFilter } = require('./propertyConversion');
 
 const CosmosClient = require('@azure/cosmos').CosmosClient;
 const endpoint = process.env.DB_HOST;
 const key = process.env.DB_PASS;
 const databaseId = process.env.DB_NAME;
 const containerId = process.env.DB_CONTAINER;
-const partitionKey = { "kind": "Hash", "paths": [`/${process.env.DB_PARTITION}`] };
+const partitionKey = {
+  "kind": "Hash",
+  "paths": [`/${process.env.DB_PARTITION}`]
+};
 const throughput = process.env.DB_THROUGHPUT;
 
 /**
@@ -27,7 +29,7 @@ function DatabaseContext() {
 /**
  * Initializes the database if/as required
  */
-DatabaseContext.prototype.initialize = async function() {
+DatabaseContext.prototype.initialize = async function () {
   try {
     const databaseResponse = await this.connection.databases
       .createIfNotExists({ id: databaseId });
@@ -37,10 +39,10 @@ DatabaseContext.prototype.initialize = async function() {
       logger.debug(`Database ${databaseId} found`);
     }
     this.database = this.connection.database(databaseId);
-    const containerResponse = await this.database.containers.createIfNotExists(
-      { id: containerId, partitionKey: partitionKey, defaultTtl: -1 },
-      { offerThroughput: throughput }
-    );
+    const containerResponse = await this.database.containers
+        .createIfNotExists(
+        { id: containerId, partitionKey: partitionKey, defaultTtl: -1 },
+        { offerThroughput: throughput });
     if (containerResponse.statusCode === 201) {
       logger.debug(`Container ${containerId} created`);
     } else if (containerResponse.statusCode === 200) {
@@ -53,253 +55,205 @@ DatabaseContext.prototype.initialize = async function() {
   }
 }
 
-function modelFromDb(dbItem, includeUuid) {
-  const category = dbItem.category;
-  let model = null;
-  for (const modelName in models) {
-    if (category === models[modelName].prototype.category) {
-      model = new models[modelName];
-      break;
-    }
-  }
-  if (!model) throw new Error(`No model found for ${category}`);
-  const modelProperties = Object.getOwnPropertyNames(model);
-  modelProperties.forEach(prop => {
-    const dbProp = toDb(prop);
-    if (model.hasOwnProperty(prop) && dbItem.hasOwnProperty(dbProp)) {
-      const { modelValue } = fromDb(dbProp, dbItem[dbProp]);
-      model[prop] = modelValue;
-    }
-  });
-  if (includeUuid) model.uuid = dbItem.id;
-  return model;
-}
-
-function modelToDb(item) {
-  const dbItem = {};
-  const itemProperties = Object.getOwnPropertyNames(item);
-  itemProperties.forEach(prop => {
-    if (item.hasOwnProperty(prop)) {
-      const { dbProp, dbValue } = toDb(prop, item[prop]);
-      dbItem[dbProp] = dbValue;
-    }
-  });
-  return dbItem;
-}
-
 /**
  * Returns database entries matching a criteria
  * @param {string} category 
- * @param {Object} filter key/value pairs for equality filtering
- * @param {Object} options e.g. { limit: 1, desc: 'dbTimestamp' }
+ * @param {Object} [include] key/value pairs for equality filtering
+ * @param {Object} [exclude] key/value pairs for inequality filtering
+ * @param {Object} [options] e.g. { limit: 1, desc: 'dbTimestamp' }
+ * @param {number} [options.limit] Maximum items to return
+ * @param {string} [options.desc] Property to sort descending (e.g. _ts timestamp)
+ * @param {string} [options.asc] Property to sort descending (e.g. _ts timestamp)
  * @returns {Object[]} a list of row objects matching the criteria
+ * @throws {Error} if database not initialized
+ * @throws {Error} if category is invalid
  */
-DatabaseContext.prototype.find = async function(category, filter, options) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
+DatabaseContext.prototype.find =
+    async function (category, include, exclude, options) {
+  if (!this.isInitialized) throw new Error('DatabaseContext not initialized');
+  if (!category || typeof (category) !== 'string') {
+    throw new Error(`Invalid category ${category}`);
+  }
   let limit = '';
   let order = '';
   if (options) {
-    if (options.limit && typeof(options.limit) === 'number') {
+    if (options.limit && typeof (options.limit) === 'number') {
       limit = `TOP ${options.limit} `;
     }
     if (options.desc) {
-      // TODO: validate that key exists in category
+      // TODO: validate that key exists in model (based on category)
       let k = options.desc;
-      if (k === 'dbTimestamp') { k = '_ts'; }
+      if (k === 'dbTimestamp') k = '_ts';
       order = ` ORDER BY c.${k} DESC`;
     } else if (options.asc) {
       let k = options.asc;
-      if (k === 'dbTimestamp') { k = '_ts'; }
+      if (k === 'dbTimestamp') k = '_ts';
       order = ` ORDER BY c.${k} ASC`;
     }
   }
   const querySpec = {
-    query: `SELECT ${limit}* FROM c`,
+    query: `SELECT ${limit}* FROM c WHERE c.category="${category}"`,
   };
-  if (typeof(category) === 'string') {
-    querySpec.query += ` WHERE c.category = "${category}"`;
+  if (include) {
+    include = dbFilter(include);
+    for (let k in include) {
+      if (include.hasOwnProperty(k)) {
+        let v = include[k];
+        if (typeof (v) === 'string') v = `"${v}"`;
+        querySpec.query += ` AND c.${k}=${v}`;
+      }
+    }
   }
-  if (filter) {
-    filter = dbFilter(filter);
-    //: iterate key/value pairs adding query filters
-    for (let k in filter) {
-      if (filter.hasOwnProperty(k)) {
-        let v = filter[k];
-        if (typeof(v) === 'string') { v = `"${v}"` }
-        querySpec.query += ` AND c.${k} = ${v}`;
+  if (exclude) {
+    exclude = dbFilter(exclude);
+    for (let k in exclude) {
+      if (exclude.hasOwnProperty(k)) {
+        let v = exclude[k];
+        if (typeof (v) === 'string') v = `"${v}"`;
+        querySpec.query += ` AND c.${k}<>${v}`;
       }
     }
   }
   querySpec.query += `${order}`;
-  const { resources: items } = await this.container
-    .items.query(querySpec).fetchAll();
+  const { resources: items } =
+      await this.container.items.query(querySpec).fetchAll();
+  logger.debug(`Found ${items.length} matching ${category}(s)`);
   const entities = [];
   items.forEach(item => {
-    //logger.debug(`Found ${item.id}: ${JSON.stringify(item)}`);
     entities.push(modelFromDb(item, true));
   });
   return entities;
 }
 
 /**
- * Returns true if the item is found in the database based on filter criteria
- * If no filter is provided, all properties save id will be criteria
- * @param {Object} item Item to check in the database
- * @param {Object} [filterOn] Optional property name to use as filter criteria
- * @returns {string|boolean} item.id if found or false
- * @throws {Error} if more than one match is found
- */
-DatabaseContext.prototype.exists = async function(item, filterOn) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
-  const category = item.category;
-  let filter = {};
-  if (!filterOn) {
-    filter = dbFilter(Object.assign(filter, item));
-    delete filter.id;   //: invalid duplicate criteria
-  } else {
-    filter = dbFilter(filterOn);
-  }
-  // TODO: should be able to query and add objects/arrays to Cosmos or query JSON.stringified
-  for (let prop in filter) {
-    if (item.hasOwnProperty(prop) && typeof(filter[prop]) === 'string') {
-      try {
-        if (typeof(JSON.parse(filter[prop])) === 'object') {
-          logger.warn(`Removing object ${category}.${prop} from exists/find filter`);
-          delete filter[prop];
-        }
-      } catch (err) {
-        if (err.message.includes('JSON')) {
-          //: property remains a filter
-        } else {
-          err.message = `${category}.${prop}: ` + err.message;
-          throw err;
-        }
-      }
-    } else if (!item.hasOwnProperty(prop)) {
-      throw new Error(`item does not contain property ${prop}`);
-    }
-  }
-  // TODO? delete other metadata with _ or prototypes?
-  const matches = await this.find(category, filter);
-  if (matches.length > 0) {
-    if (matches.length === 1) {
-      return matches[0].uuid;
-    } else {
-      throw new Error(`Multiple duplicates found with ${JSON.stringify(filter)}`);
-    }
-  }
-  return false;
-}
-
-/**
- * Creates a new entity in the database if the uniqueness filter is not matched
- * Note: this is a subset of upsert
- * @param {Object} newItem The item to look for in the database
- * @param {Object} [filterOn] Optional filter on properties defining "exists"
- * @returns {Object} {id, category, created}
- */
-DatabaseContext.prototype.createIfNotExists = async function(newItem, filterOn) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
-  const exists = await this.exists(newItem, filterOn);
-  if (!exists) {
-    const { resource: createdItem } = await this.container.items.upsert(newItem);
-    //logger.debug(`Item ${createdItem.id} inserted into database`);
-    return { id: createdItem.id, category: createdItem.category, created: true };
-  } else {
-    return { id: exists, category: newItem.category, created: false };
-  }
-}
-
-/**
- * Returns a specific entity from the database
- * @param {string} id The id in the collection
- * @param {string} category The category in the collection
- * @returns {Object} The item from the collection
- */
-DatabaseContext.prototype.read = async function(id, category) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
-  const { resource: item } = await this.container
-    .item(id, category).read();
-  //logger.debug(`Item ${id}: ${JSON.stringify(item)}`);
-  return item;
-}
-
-/**
  * Updates an existing entity in the database or creates a new one.
  * Null and undefined values are not pushed in an update.
- * If the item includes a timestamp field indicated by _utc it will discard update if
- * older than that property in the database entity.
- * TODO: update function to 
+ * If the item includes a .newest prototype property it will discard 
+ * update if older than that property in the database entity.
  * @param {Object} item The item to upsert
  * @param {Object} [filterOn] Optional filter on properties defining "exists"
  * @param {Object} [newerThan] Optional filter on properties involving timestamp
- * @returns {Object} { id, changeCount, created }
+ * @returns {{ id: string, changeList: Object, created: boolean }}
+ * @throws {Error} if database not initialized
+ * @throws {Error} if item.category is invalid
+ * @throws {Error} if filterOn is not an Object
+ * @throws {Error} if multiple matching entries found in database
  */
-DatabaseContext.prototype.upsert = async function(item, filterOn) {
+DatabaseContext.prototype.upsert = async function (item, filterOn) {
   if (!this.isInitialized) throw new Error('DatabaseContext not initialized');
-  const newItem = Object.assign({}, modelToDb(item));
-  let changeCount = 0;
+  if (!item.category || typeof (item.category) !== 'string') {
+    throw new Error(`Invalid category ${item.category}`);
+  }
+  let created = false;
+  let id;
+  let dbItem;
   let changeList = null;
-  let { id, category, created } = await this.createIfNotExists(newItem, filterOn);
-  if (!created) {
-    let dbItem = await this.read(id, category);
-    let revert = Object.assign({}, dbItem);
+  if (!filterOn && item.unique) {
+    filterOn = {};
+  } else if (filterOn && !(typeof filterOn === 'object')) {
+    throw new Error(`filterOn must be Object`);
+  }
+  if (item.unique) {
+    filterOn[item.unique] = item[item.unique];
+  }
+  const found = await this.find(item.category, filterOn);
+  if (found.length === 0) {
+    created = true;
+    dbItem = item;
+  } else if (found.length > 1) {
+    const errStr = (`${found.length} ${item.category} entities matching`
+      + ` ${JSON.stringify(filterOn)}`);
+    logger.error(errStr);
+    throw new Error(errStr);
+  } else {
     changeList = {};
+    dbItem = found[0];
+    id = dbItem.id;
+    const revert = Object.assign({}, dbItem);
     for (const prop in dbItem) {
-      if (dbItem.hasOwnProperty(prop) && newItem.hasOwnProperty(prop)) {
-          if (dbItem[prop] != newItem[prop]
-              && newItem[prop] !== null
-              && typeof(newItem[prop]) !== 'undefined') {
-            //if (prop.includes('_utc')) {
-            if (item.newest && prop.includes(toDb(item.newest))) {
-              let dbTime = new Date(dbItem[prop]);
-              let itemTime = new Date(newItem[prop]);
-              if (dbTime > itemTime) {
-                logger.warn(`Discarding update as ${prop} in database ${dbTime} is newer than ${itemTime}`);
-                dbItem = revert;
-                changeCount = 0;
-                changeList = null;
-                break;
-              }
-            }
-            changeList[prop] = {
-              old: dbItem[prop],
-              new: newItem[prop]
-            };
-            dbItem[prop] = newItem[prop];
-            changeCount += 1;
+      if (dbItem.hasOwnProperty(prop) && item.hasOwnProperty(prop)) {
+        //TODO: check if Object/JSON and Array work
+        if (typeof item[prop] === 'undefined' || item[prop] === null) continue;
+        if (item.newest && prop.includes(item.newest)) {
+          let dbTime = new Date(dbItem[prop]);
+          let itemTime = new Date(item[prop]);
+          if (dbTime > itemTime) {
+            logger.warn(`Discarding ${item.category} update as ${prop}`
+                + ` in database ${dbTime} is newer than ${itemTime}`);
+            dbItem = revert;
+            changeList = null;
+            break;
           }
+        }
+        if (typeof item[prop] === 'object') {
+          if (JSON.stringify(dbItem[prop]) === JSON.stringify(item[prop])) {
+            continue;
+          }
+        }
+        if (dbItem[prop] == item[prop]) continue;
+        changeList[prop] = {
+          old: dbItem[prop],
+          new: item[prop]
+        };
+        dbItem[prop] = item[prop];
       }
     }
-    const { resource: updatedItem } = await this.container
-      .item(id, category)
-      .replace(dbItem);
-    // TODO: check which db metadata gets auto-updated e.g. _ts
-    logger.debug(`${category} ${updatedItem.id} updated ${changeCount} properties`);
+    if (Object.keys(changeList).length === 0) changeList = null;
+  }
+  if (created || changeList) {
+    try {
+      const { resource: createdItem } =
+          await this.container.items.upsert(modelToDb(dbItem));
+      id = createdItem.id;
+    } catch (e) {
+      logger.error(e);
+    }
+  }
+  if (created) {
+    logger.debug(`Inserted ${item.category} (${id})`);
+  } else if (changeList) {
+    logger.debug(`Updated ${item.category} ${JSON.stringify(changeList)}`);
   } else {
-    logger.debug(`${category} added to database (${id})`);
+    logger.debug(`No updates to ${item.category} (${id})`);
   }
   return { id: id, changeList: changeList, created: created };
 }
 
 /**
- * @param {string} id The id in the collection
- * @param {string} category The category in the collection
- * @returns {Object} result
+ * Deletes an item from the database
+ * @param {Object} item The category in the collection
+ * @returns {boolean} result
+ * @throws {Error} if database not initialized
+ * @throws {Error} if item.category is invalid
  */
-DatabaseContext.prototype.delete = async function(id, category) {
-  if (!this.isInitialized) { throw new Error('DatabaseContext not initialized') }
-  const itemResponse = await this.container
-    .item(id, category)
-    .delete();
-  //logger.debug(`${category} item ${id} removed from database`);
-  if (itemResponse.resource === null && itemResponse.statusCode === 204) {
-    return true
+DatabaseContext.prototype.delete = async function (item) {
+  if (!this.isInitialized) throw new Error('DatabaseContext not initialized');
+  if (!item.category || typeof (item.category) !== 'string') {
+    throw new Error(`Invalid category ${item.category}`);
+  }
+  const filterOn = {};
+  filterOn[item.unique] = item[item.unique];
+  const found = await this.find(item.category, filterOn);
+  if (found.length === 1) {
+    try {
+      const itemResponse = await this.container
+        .item(found[0].id, item.category)
+        .delete();
+      if (itemResponse.resource === null && itemResponse.statusCode === 204) {
+        logger.debug(`Deleted 1 ${item.category}(s)`);
+        return true;
+      }
+    } catch (e) {
+      logger.error(e);
+    }
   }
   return false;
 }
 
-DatabaseContext.prototype.close = async function() {
+/**
+ * Closes the database connection (null op for Cosmos DB)
+ */
+DatabaseContext.prototype.close = async function () {
   logger.debug('Success: close operation not required on Cosmos DB');
 }
 

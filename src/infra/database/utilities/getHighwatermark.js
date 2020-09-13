@@ -1,17 +1,19 @@
 'use strict';
+
+require('dotenv').config();
 const logger = require('../../logging').loggerProxy(__filename);
 const { ApiCallLog } = require('../models');
-//const category = require('../models/categories.json').ApiCallLog;
-const propertyConversion = require('./propertyConversion');
+
+const HISTORY_HOURS = process.env.SATELLITE_HISTORY_HOURS || 48;
 
 /**
  * Returns the high water mark from the most recent IDP Messaging API call
- * @param {DatabaseContext} dbContext The database client/connection
+ * @param {DatabaseContext} database The database client/connection
  * @param {string} mailboxId The mailbox id the operation was made against
  * @param {string} operation The api operation
  * @returns {object} { nextStartTimeUtc, [nextStartId] }
  */
-async function getHighwatermark(dbContext, mailboxId, operation) {
+async function getHighwatermark(database, mailboxId, operation) {
   const SUPPORTED_OPERATIONS = [
     'getReturnMessages',
     'getForwardStatuses',
@@ -20,21 +22,19 @@ async function getHighwatermark(dbContext, mailboxId, operation) {
     throw new Error(`Invalid operation must be one of ${SUPPORTED_OPERATIONS}`);
   }
   let apiFilter = {};
-  let queryFilter = {
+  const includeFilter = {
     operation: operation,
     mailboxId: mailboxId,
     completed: true,
   };
-  //queryFilter = propertyConversion.dbFilter(queryFilter);
+  const excludeFilter = { nextStartTimeUtc: '' };
   const options = {
     limit: 1,
     desc: '_ts',
   };
   const category = ApiCallLog.prototype.category;
-  const apiCalls = await dbContext.find(category, queryFilter, options);
+  const apiCalls = await database.find(category, includeFilter, excludeFilter, options);
   if (apiCalls.length > 0) {
-    //let lastCall = new ApiCallLog();
-    //lastCall.fromDb(apiCalls[0]);
     const lastCall = apiCalls[0];
     if (lastCall.nextStartId > 0) {
       apifilter.startMessageId = lastCall.nextStartId;
@@ -48,7 +48,7 @@ async function getHighwatermark(dbContext, mailboxId, operation) {
   }
   if (!(apiFilter.startTimeUtc) && !(apiFilter.startMessageId)) {
     let date = new Date();
-    date.setUTCHours(date.getUTCHours() - 48);
+    date.setUTCHours(date.getUTCHours() - HISTORY_HOURS);
     apiFilter.startTimeUtc = date.toISOString();
     logger.debug(`No previous filter found for mailbox ${mailboxId} - using`
         + ` ${apiFilter.startTimeUtc}`);

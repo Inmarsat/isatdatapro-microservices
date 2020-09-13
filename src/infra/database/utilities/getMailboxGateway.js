@@ -19,8 +19,6 @@ async function getMailboxGateway(dbContext, mailbox) {
     if (findGateway.length > 1) {
       logger.warn(`Satellite gateway ${mailbox.satelliteGatewayName} duplicates found in database`);
     }
-    //const satelliteGateway = new SatelliteGateway();
-    //satelliteGateway.fromDb(findGateway[0]);
     const satelliteGateway = findGateway[0];
     return satelliteGateway;
   } else {

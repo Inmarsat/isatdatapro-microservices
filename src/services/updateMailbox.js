@@ -2,16 +2,20 @@
 
 const logger = require('../infra/logging').loggerProxy(__filename);
 const DatabaseContext = require('../infra/database/repositories');
-const Mailbox = require('../infra/database/models/Mailbox');
+const { Mailbox } = require('../infra/database/models');
 
 /**
  * Adds a mailbox or updates existing mailbox parameters
- * @param {object} mailboxParameters 
+ * @param {object} mailboxParameters The Mailbox details
+ * @param {string} mailboxParameters.mailboxId 
+ * @param {string} [mailboxParameters.name] 
+ * @param {string} [mailboxParameters.accessId] 
+ * @param {string} [mailboxParameters.password] 
+ * @param {string} [mailboxParameters.satelliteGatewayName] 
  */
 module.exports = async function (mailboxParameters) {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
-  const callTime = new Date().toISOString();
   const database = new DatabaseContext();
   await database.initialize();
 
@@ -30,12 +34,14 @@ module.exports = async function (mailboxParameters) {
         mailboxParameters.satelliteGatewayName
       );
       let uniFilter = { mailboxId: mailbox.mailboxId };
-      let { id , changeList, created } = await database.upsert(mailbox.toDb(), uniFilter);
+      let { id, changeList, created } =
+          await database.upsert(mailbox, uniFilter);
       //TODO: validate auth/connectivity using getMobiles;
       if (created) {
         logger.debug(`Added mailbox ${mailbox.mailboxId} to database (${id})`);
       } else {
-        logger.debug(`Changes to mailbox ${mailbox.mailboxId}: ${JSON.stringify(changeList)}`);
+        logger.debug(`Changes to mailbox ${mailbox.mailboxId}:`
+            + ` ${JSON.stringify(changeList)}`);
       }
     } else {
       throw new Error('Invalid mailbox parameters');

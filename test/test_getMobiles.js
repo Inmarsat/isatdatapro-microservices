@@ -12,4 +12,5 @@ const testGetMobiles = async(satelliteGateway, mailboxId) => {
   }
 };
 
-testGetMobiles(undefined, 590);
+const testMailbox = require('../config/local.settings.json').testMailbox;
+testGetMobiles(undefined, testMailbox);

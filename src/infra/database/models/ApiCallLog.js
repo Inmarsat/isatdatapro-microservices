@@ -35,6 +35,7 @@ function ApiCallLog(operation, satelliteGatewayName, mailboxId, callTimeUtc) {
 ApiCallLog.prototype = Object.create(Model.prototype);
 ApiCallLog.prototype.constructor = ApiCallLog;
 ApiCallLog.prototype.category = 'api_call_log';
+ApiCallLog.prototype.unique = 'callTimeUtc';
 
 ApiCallLog.prototype.success = function() {
   return (this.completed && this.errorId === 0);
