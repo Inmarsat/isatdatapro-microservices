@@ -1,6 +1,8 @@
 'use strict';
 
 //const logger = require('../../logging').loggerProxy(__filename);
+require('dotenv').config();
+const dbType = (process.env.DB_TYPE).toLowerCase();
 const models = require('../models');
 
 /**
@@ -37,35 +39,49 @@ function snakeToCamelCase_(propName) {
 
 /**
  * Converts a property and optionally its value to database-compatible
- * @private
  * @param {string} modelProp The model property
  * @param {any} [modelValue] Optional property value
  * @returns {(string|{dbProp: string, dbValue: any})} the db property name/object
  */
-function toDb(modelProp, modelValue) {
+function propToDb(modelProp, modelValue) {
   let dbProp = camelToSnakeCase_(modelProp);
   if (typeof(modelValue) !== 'undefined') {
     let dbValue = modelValue;
     if (modelValue instanceof Array || modelValue instanceof Object) {
       dbValue = JSON.stringify(modelValue);
+    } else if (dbType.includes('mysql')
+        && modelProp.includes('TimeUtc')) {
+      dbValue = isoToMySqlDate(dbValue);
     }
     return { dbProp, dbValue };
   }
   return dbProp;
 }
 
+function isoToMySqlDate(date) {
+  if (date) return date.replace('T', ' ').replace('Z', '');
+  return date;
+}
+
+function mySqlDateToIso(date) {
+  if (date) return date.replace(' ', 'T') + 'Z';
+  return date;
+}
+
 /**
  * Converts database-compatible to model property and optionally its value
- * @private
  * @param {string} dbProp The property name/key from the database
  * @param {any} [dbValue] Optional value stored in the database
  * @returns {(string|{prop: string, value: any})} the model property name/object
  */
-function fromDb(dbProp, dbValue) {
+function propFromDb(dbProp, dbValue) {
   let modelProp = snakeToCamelCase_(dbProp);
   if (typeof(dbValue) !== 'undefined') {
     let modelValue = dbValue;
-    if (typeof(dbValue) === 'string') {
+    if (dbType.includes('mysql') 
+        && modelProp.includes('TimeUtc')) {
+      modelValue = mySqlDateToIso(dbValue);
+    } else if (typeof(dbValue) === 'string') {
       try {
         modelValue = JSON.parse(dbValue);
         if (modelProp === 'mailboxId') modelValue = String(modelValue);
@@ -103,9 +119,9 @@ function modelFromDb(dbItem, includeDbId) {
   if (!model) throw new Error(`No model found for ${category}`);
   const modelProperties = Object.getOwnPropertyNames(model);
   modelProperties.forEach(prop => {
-    const dbProp = toDb(prop);
+    const dbProp = propToDb(prop);
     if (model.hasOwnProperty(prop) && dbItem.hasOwnProperty(dbProp)) {
-      const { modelValue } = fromDb(dbProp, dbItem[dbProp]);
+      const { modelValue } = propFromDb(dbProp, dbItem[dbProp]);
       model[prop] = modelValue;
     }
   });
@@ -125,7 +141,7 @@ function modelToDb(item) {
   const itemProperties = Object.getOwnPropertyNames(item);
   itemProperties.forEach(prop => {
     if (item.hasOwnProperty(prop)) {
-      const { dbProp, dbValue } = toDb(prop, item[prop]);
+      const { dbProp, dbValue } = propToDb(prop, item[prop]);
       dbItem[dbProp] = dbValue;
     }
   });
@@ -141,7 +157,7 @@ function dbFilter(filter) {
   let newFilter = {};
   for (let param in filter) {
     if (!filter.hasOwnProperty(param)) continue;
-    let dbName = toDb(param);
+    let dbName = propToDb(param);
     newFilter[dbName] = filter[param];
   }
   return newFilter;
@@ -151,4 +167,7 @@ module.exports = {
   dbFilter,
   modelToDb,
   modelFromDb,
+  propToDb,
+  propFromDb,
+  isoToMySqlDate,
 };

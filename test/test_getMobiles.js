@@ -4,7 +4,7 @@ const events = require('../src/infra/eventHandler').emitter;
 const testGetMobiles = async(satelliteGateway, mailboxId) => {
   try {
     events.addListener('NewMobile', (detail) => {
-      console.log('New Mobile found: ' + detail);
+      console.log('New Mobile found: ' + JSON.stringify(detail));
     });
     await getMobiles(satelliteGateway, mailboxId);
   } catch (err) {
@@ -13,4 +13,4 @@ const testGetMobiles = async(satelliteGateway, mailboxId) => {
 };
 
 const testMailbox = require('../config/local.settings.json').testMailbox;
-testGetMobiles(undefined, testMailbox);
+//testGetMobiles(undefined, testMailbox);

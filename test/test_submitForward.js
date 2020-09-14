@@ -62,4 +62,4 @@ const getRxMetrics = {
 };
 
 const testDevice = require('../config/local.settings.json').testTerminal;
-testSubmitForward(testDevice, ping);
+//testSubmitForward(testDevice, ping);

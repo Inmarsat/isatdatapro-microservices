@@ -87,7 +87,8 @@ function Field(name, dataType, value) {
  */
 function isValidField(field) {
   try {
-    if (field instanceof Object && field !== null && field.constructor === Field) {
+    if (field instanceof Object && field !== null
+        && field.constructor === Field) {
       if (field.name && field.dataType) {
         if (field.dataType === 'array' && field.elements) {
           field.elements.forEach(element => {
@@ -101,7 +102,8 @@ function isValidField(field) {
               return false;
             }
           });
-        } else if (field.stringValue && typeof(field.stringValue) === 'string') {
+        } else if (field.stringValue
+              && typeof(field.stringValue) === 'string') {
           return true;
         } else {
           console.warn(`dataType ${field.dataType} not handled`);

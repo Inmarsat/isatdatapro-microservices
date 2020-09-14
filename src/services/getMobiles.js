@@ -70,9 +70,10 @@ module.exports = async function(satelliteGatewayName, mailboxId) {
       }
     })
     .catch(async (err) => {
-      let apiOutage = await handleApiFailure(err, database, idpGateway);
+      let apiOutage =
+          await handleApiFailure(database, err, idpGateway, operation);
       if (!apiOutage) {
-        logger.error(err);
+        logger.error(err.stack);
         throw err;
       }
     });

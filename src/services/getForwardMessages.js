@@ -96,9 +96,10 @@ module.exports = async function(mailboxId, messageIds) {
       }
     })
     .catch(async (err) => {
-      let apiOutage = await handleApiFailure(err, idpGateway);
+      let apiOutage =
+          await handleApiFailure(database, err, idpGateway, operation);
       if (!apiOutage) {
-        logger.error(err);
+        logger.error(err.stack);
         throw err;
       }
     });

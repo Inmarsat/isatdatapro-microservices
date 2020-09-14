@@ -54,8 +54,8 @@ function forwardMessageStateChange(messageId, newState, reason, mobileId) {
  */
 function otherClientForwardSubmission(messageId, mailboxId) {
   emitter.emit('OtherClientForwardSubmission', messageId, mailboxId,
-      `New forward message ${messageId} from unknown API client found in mailbox`
-      + ` ${mailboxId}`);
+      `New forward message ${messageId} from unknown API client`
+      + ` found in mailbox ${mailboxId}`);
 }
 
 /**
@@ -134,18 +134,3 @@ module.exports = {
         `Broadcast IDs retrieved from ${mobileId}: ${JSON.stringify(broadcastIds)}`);
   },
 };
-
-/*
-module.exports = {
-  //emitter,
-  apiError,
-  apiOutage,
-  apiRecovery,
-  newMobile,
-  newReturnMessage,
-  newForwardMessage,
-  forwardMessageStateChange,
-  otherClientForwardSubmission,
-  modemRegistration,
-};
-*/

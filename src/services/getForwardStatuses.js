@@ -53,14 +53,14 @@ module.exports = async function() {
             await message.fromApi(status);
             message.updateStatus(status);
             message.mailboxId = mailbox.mailboxId;
-            const messageFilter = { messageId: message.messageId };
+            const filterMessage = { messageId: message.messageId };
             let { changeList, created } =
-                await database.upsert(message, messageFilter);
+                await database.upsert(message, filterMessage);
             if (!created) {
               logger.debug(`State change list: ${JSON.stringify(changeList)}`);
               //TODO: may be a smarter way to avoid the second database read
               const findMessage =
-                  await database.find(message.category, messageFilter);
+                  await database.find(message.category, filterMessage);
               if (findMessage.length > 0) {
                 message = findMessage[0];
               }
@@ -90,9 +90,10 @@ module.exports = async function() {
       }
     })
     .catch(async function (err) {
-      let apiOutage = await handleApiFailure(err, idpGateway);
+      let apiOutage =
+          await handleApiFailure(database, err, idpGateway, operation);
       if (!apiOutage) {
-        logger.error(err);
+        logger.error(err.stack);
         throw err;
       }
     });

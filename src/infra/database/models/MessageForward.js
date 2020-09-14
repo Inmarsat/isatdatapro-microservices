@@ -1,6 +1,5 @@
 'use strict';
 const Message = require('./Message');
-//const category = require('./categories.json').MessageForward;
 const idpApi = require('isatdatapro-api');
 
 /**
@@ -21,8 +20,8 @@ const idpApi = require('isatdatapro-api');
 function MessageForward(userMessageId, messageId, mobileId,
     payloadRaw, payloadJson, mailboxTimeUtc, state, stateTimeUtc,
     mobileWakeupPeriod, mobileSleepSeconds, scheduledSendTimeUtc) {
-  Message.call(this, messageId, mobileId, payloadRaw, payloadJson, mailboxTimeUtc);
-  //this.category = category;
+  Message.call(this,
+      messageId, mobileId, payloadRaw, payloadJson, mailboxTimeUtc);
   this.subcategory = 'forward';
   this.userMessageId = typeof(userMessageId) === 'number' ? userMessageId : null;
   this.referenceNumber = null;
@@ -30,10 +29,14 @@ function MessageForward(userMessageId, messageId, mobileId,
   this.stateName = this.getStateName();
   this.errorId = 0;
   this.error = this.getStateReason();
-  this.stateTimeUtc = typeof(stateTimeUtc) === 'string' ? stateTimeUtc : '1970-01-01T00:00:00Z';
-  this.mobileSleepSeconds = typeof(mobileSleepSeconds) === 'number' ? this.mobileSleepSeconds : 0;
-  this.mobileWakeupPeriod = typeof(mobileWakeupPeriod) === 'number' ? mobileWakeupPeriod : 0;
-  this.scheduledSendTimeUtc = typeof(scheduledSendTimeUtc) === 'string' ? scheduledSendTimeUtc : null;
+  this.stateTimeUtc = typeof(stateTimeUtc) === 'string' ?
+      stateTimeUtc : '1970-01-01T00:00:00Z';
+  this.mobileSleepSeconds = typeof(mobileSleepSeconds) === 'number' ?
+      this.mobileSleepSeconds : 0;
+  this.mobileWakeupPeriod = typeof(mobileWakeupPeriod) === 'number' ?
+      mobileWakeupPeriod : 0;
+  this.scheduledSendTimeUtc = typeof(scheduledSendTimeUtc) === 'string' ?
+      scheduledSendTimeUtc : null;
   this.isClosed = false;
 }
 

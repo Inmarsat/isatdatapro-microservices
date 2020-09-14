@@ -3,6 +3,7 @@
 const logger = require('../infra/logging').loggerProxy(__filename);
 const DatabaseContext = require('../infra/database/repositories');
 const { SatelliteGateway } = require('../infra/database/models');
+const { updateSatelliteGateway: upsert } = require('../infra/database/utilities');
 
 /**
  * Adds or updates a Satellite Gateway in the database
@@ -24,9 +25,9 @@ module.exports = async function (gatewayParameters) {
         gatewayParameters.name,
         gatewayParameters.url
       );
-      let uniFilter = { name: gateway.name };
+      //let uniFilter = { name: gateway.name };
       let { id, changeList, created } =
-          await database.upsert(gateway, uniFilter);
+          await upsert(database, gateway);
       if (created) {
         logger.debug(`Added satellite gateway ${gateway.name}`
             + ` to database (${id})`);

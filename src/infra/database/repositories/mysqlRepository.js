@@ -3,11 +3,10 @@
 
 const mysql = require('mysql');
 const util = require('util');
-const dbConfig = require('dotenv').config();
-//const dbConfig = require('../../../../test/_private_mysql');
+require('dotenv').config();
 
-const logger = require('../../logging').loggerProxy(__filename);
-const { modelToDb, modelFromDb, dbFilter } = require('./propertyConversion');
+const { logger } = require('../../logging');   //.loggerProxy(__filename);
+const { modelToDb, modelFromDb, dbFilter, propToDb, isoToMySqlDate } = require('./propertyConversion');
 const models = require('../models');
 
 /**
@@ -17,6 +16,14 @@ const models = require('../models');
  */
 function buildSchema() {
   const ignore = ['message'];
+  const DEFAULT_VARCHAR = 50;
+  const longProps = {
+    'payload': 50000,
+    'version': 100,
+    'location': 150,
+    'broadcastIds': 150,
+    'url': 100,
+  };
   const schema = {};
   for (const modelName in models) {
     try {
@@ -27,24 +34,28 @@ function buildSchema() {
         const propNames = Object.getOwnPropertyNames(model);
         propNames.forEach(propName => {
           const propVal = model[propName];
-          let mySqlDef = `${toDb(propName)}`;
-          switch(typeof propVal) {
-            case 'boolean':
-              mySqlDef += ` BOOLEAN`;
-              break;
-            case 'string':
-              const len = propName.includes('url') ? 150 : 50;
-              mySqlDef += ` VARCHAR(${len})`;
-              break;
-            case 'number':
-              mySqlDef += ` INT`;
-              break;
-            default:
-              if (propName.includes('payload') || propVal instanceof Array) {
-                mySqlDef += ` JSON`;
-              } else {
-                mySqlDef += ` VARCHAR(50)`;
-              }
+          let mySqlDef = `${propToDb(propName)}`;
+          if (propName.includes('TimeUtc')) {
+            //mySqlDef += ` DATETIME`;
+            mySqlDef += ` VARCHAR(25)`;
+          } else {
+            switch(typeof propVal) {
+              case 'boolean':
+                mySqlDef += ` BOOLEAN`;
+                break;
+              case 'number':
+                mySqlDef += ` INT`;
+                break;
+              default:
+                let long = false;
+                for (const prop in longProps) {
+                  if (propName.includes(prop)) {
+                    long = true;
+                    break;
+                  }
+                }
+                mySqlDef += long ? ` TEXT` : ` VARCHAR(${DEFAULT_VARCHAR})`;
+            }
           }
           if (propVal !== null) {
             mySqlDef += ` NOT NULL`;
@@ -76,9 +87,9 @@ function buildSchema() {
 function DatabaseContext() {
   this.type = 'MySQL';
   this.conn = mysql.createConnection({
-    host: dbConfig.DB_HOST,
-    user: dbConfig.DB_USER,
-    password: dbConfig.DB_PASS,
+    host: process.env.MYSQL_DB_HOST,
+    user: process.env.MYSQL_DB_USER,
+    password: process.env.MYSQL_DB_PASS,
   });
   this.connect = util.promisify(this.conn.connect).bind(this.conn);
   this.query = util.promisify(this.conn.query).bind(this.conn);
@@ -90,33 +101,63 @@ function DatabaseContext() {
  * Initializes the MySQL database if required
  */
 DatabaseContext.prototype.initialize = async function() {
+  const dbName = process.env.MYSQL_DB_NAME;
+  let success = true;
   try {
-    let exists = await this.query(`SHOW DATABASES LIKE "${dbConfig.DB_NAME}"`);
+    let exists =
+        await this.query(`SHOW DATABASES LIKE "${dbName}"`);
     if (exists.length === 0) {
-      await this.query(`CREATE DATABASE IF NOT EXISTS ${dbConfig.DB_NAME}`);
-      logger.info(`Created database ${dbConfig.DB_NAME}`);
-      await this.query(`USE ${dbConfig.DB_NAME}`);
-      const schema = buildSchema();
-      for (let tableName in schema) {
-        if (schema.hasOwnProperty(tableName)) {
-          let tQuery = `CREATE TABLE IF NOT EXISTS ${tableName}(`;
-          const table = schema[tableName];
-          for (let column=0; column < table.length; column++) {
-            if (column > 0) tQuery += ', ';
-            tQuery += table[column];
+      const { protocol41: dbCreated } =
+          await this.query(`CREATE DATABASE IF NOT EXISTS ${dbName}`);
+      if (dbCreated) {
+        logger.info(`Created database ${dbName}`);
+        const { protocol41: usingDb } = await this.query(`USE ${dbName}`);
+        if (usingDb) {
+          const schema = buildSchema();
+          for (let tableName in schema) {
+            if (schema.hasOwnProperty(tableName)) {
+              let tQuery = `CREATE TABLE IF NOT EXISTS ${tableName}(`;
+              const table = schema[tableName];
+              for (let column=0; column < table.length; column++) {
+                if (column > 0) tQuery += ', ';
+                tQuery += table[column];
+              }
+              tQuery += ')';
+              const { protocol41: tableCreated } = await this.query(tQuery);
+              if (tableCreated) {
+                logger.debug(`Created table ${tableName}`);
+              } else {
+                success = false;
+                break;
+                //throw new Error(`tableCreated failed`);
+              }
+            }
           }
-          tQuery += ')';
-          await this.query(tQuery);
-          logger.debug(`Created table ${tableName}`);
+        } else {
+          success = false;
+          //throw new Error(`usingDb failed`);
         }
+      } else {
+        success = false;
+        //throw new Error(`dbCreated failed`);
       }
     } else {
-      await this.query(`USE ${dbConfig.DB_NAME}`);
-      logger.debug(`Using database ${dbConfig.DB_NAME}`);
+      const { protocol41: usingDb } = await this.query(`USE ${dbName}`);
+      logger.debug(`Using database ${dbName}`);
     }
-    this.isInitialized = true;
   } catch (err) {
-    logger.error(err);
+    success = false;
+    logger.error(err.stack);
+  } finally {
+    if (success) {
+      this.isInitialized = true;
+    } else {
+      const { protocol41: dbDeleted } =
+          await this.query(`DROP DATABASE IF EXISTS ${dbName}`);
+      if (!dbDeleted) {
+        throw new Error(`Failed to initialize MySQL database`);
+      }
+    }
   }
 }
 
@@ -129,12 +170,13 @@ DatabaseContext.prototype.initialize = async function() {
  * @param {number} [options.limit] Maximum items to return
  * @param {string} [options.desc] Property to sort descending (e.g. _ts timestamp)
  * @param {string} [options.asc] Property to sort descending (e.g. _ts timestamp)
+ * @param {Date} [older] Searches for records older than the Date
  * @returns {Object[]} a list of row objects matching the criteria
  * @throws {Error} if database not initialized
  * @throws {Error} if category is invalid
  */
 DatabaseContext.prototype.find =
-    async function(category, include, exclude, options) {
+    async function(category, include, exclude, options, older) {
   if (!this.isInitialized) throw new Error('DatabaseContext not initialized');
   if (!category || typeof(category) !== 'string') {
     throw new Error(`Invalid category ${category}`);
@@ -180,9 +222,15 @@ DatabaseContext.prototype.find =
       }
     }
   }
+  if (older) {
+    older = dbFilter(older);
+    for (const agedKey in older) {
+      querySpec.query += ` AND ${agedKey}<"${older[agedKey]}"`;
+    }
+  }
   querySpec.query += `${order}`;
   const items = await this.query(querySpec.query);
-  logger.debug(`Found ${items.length} matching ${category}(es)`);
+  logger.debug(`Found ${items.length} matching ${category}(s)`);
   const entities = [];
   items.forEach(item => {
     entities.push(modelFromDb(item, true));
@@ -268,11 +316,12 @@ DatabaseContext.prototype.upsert = async function(item, filterOn) {
   }
   if (created || changeList) {
     try {
+      logger.debug(`Upserting ${dbItem.category}`);
       const query = `REPLACE INTO ${table} SET ?`;
       const { insertId } = await this.query(query, [modelToDb(dbItem)]);
       id = insertId;
     } catch (e) {
-      logger.error(e);
+      logger.error(e.stack);
     }
   }
   if (created) {
@@ -300,18 +349,47 @@ DatabaseContext.prototype.delete = async function(item) {
   const table = item.category;
   const filterOn = {};
   filterOn[item.unique] = item[item.unique];
+  if (item.unique.includes('TimeUtc')) {
+    filterOn[item.unique] = isoToMySqlDate(item[item.unique]);
+  }
   const found = await this.find(item.category, filterOn);
   if (found.length === 1) {
     let query = `DELETE FROM ${table} WHERE id=${found[0].id}`;
     try {
       const { affectedRows } = await this.query(query);
-      logger.debug(`Deleted ${affectedRows} ${item.category}(s)`);
+      logger.debug(`Deleted ${affectedRows} ${item.category}(s)`
+          + ` (${item[item.unique]})`);
       return true;
     } catch (e) {
-      logger.error(e);
+      logger.error(e.stack);
     }
   }
   return false;
+}
+
+DatabaseContext.prototype.removeAged = async function() {
+  for (const modelName in models) {
+    const model = new models[modelName];
+    if (!model.ttl) continue;
+    const TTL_HOURS = model.ttl / 3600;
+    const agedDate = new Date();
+    agedDate.setUTCHours(agedDate.getUTCHours() - TTL_HOURS);
+    //:TEST agedDate.setUTCSeconds(agedDate.getUTCSeconds() - 5);
+    let agedFilter = {};
+    agedFilter[model.agedKey] = isoToMySqlDate(agedDate.toISOString());
+    const aged = await this.find(model.category, null, null, null, agedFilter);
+    if (aged.length > 0) {
+      logger.debug(`Deleting ${aged.length} aged ${model.category}(s)`);
+      let deletedCount = 0;
+      for (let i=0; i < aged.length; i++) {
+        const deleted = await this.delete(aged[i]);
+        if (deleted) deletedCount += 1;
+      }
+      logger.info(`Deleted ${deletedCount} aged ${model.category}(s)`);
+    } else {
+      logger.debug(`No ${model.category} aged`);
+    }
+  }
 }
 
 /**
@@ -322,7 +400,7 @@ DatabaseContext.prototype.close = async function() {
     await this.end();
     logger.debug('Success: closed MySQL connection');
   } catch (e) {
-    logger.error(e);
+    logger.error(e.stack);
     throw e;
   }
 }

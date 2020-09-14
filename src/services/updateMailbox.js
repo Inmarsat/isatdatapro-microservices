@@ -20,11 +20,10 @@ module.exports = async function (mailboxParameters) {
   await database.initialize();
 
   try {
-    if (typeof(mailboxParameters.mailboxId) === 'string' &&
-        typeof(mailboxParameters.name) === 'string' &&
-        typeof(mailboxParameters.accessId) === 'string' &&
-        typeof(mailboxParameters.password) === 'string' &&
-        typeof(mailboxParameters.satelliteGatewayName) === 'string') {
+    if (!mailboxParameters.mailboxId) {
+      throw new Error(`Missing unique key mailboxId`);
+    }
+    if (typeof(mailboxParameters.mailboxId) === 'string') {
       //: valid definition
       let mailbox = new Mailbox(
         mailboxParameters.mailboxId,

@@ -6,15 +6,15 @@ const logger = require('../../logging').loggerProxy(__filename);
 const { modelToDb, modelFromDb, dbFilter } = require('./propertyConversion');
 
 const CosmosClient = require('@azure/cosmos').CosmosClient;
-const endpoint = process.env.DB_HOST;
-const key = process.env.DB_PASS;
-const databaseId = process.env.DB_NAME;
-const containerId = process.env.DB_CONTAINER;
+const endpoint = process.env.COSMOS_DB_HOST;
+const key = process.env.COSMOS_DB_PASS;
+const databaseId = process.env.COSMOS_DB_NAME;
+const containerId = process.env.COSMOS_DB_CONTAINER;
 const partitionKey = {
   "kind": "Hash",
-  "paths": [`/${process.env.DB_PARTITION}`]
+  "paths": [`/${process.env.COSMOS_DB_PARTITION}`]
 };
-const throughput = process.env.DB_THROUGHPUT;
+const throughput = process.env.COSMOS_DB_THROUGHPUT;
 
 /**
  * Creates a Cosmos DB connection
@@ -50,8 +50,8 @@ DatabaseContext.prototype.initialize = async function () {
     }
     this.container = this.database.container(containerId);
     this.isInitialized = true;
-  } catch (err) {
-    logger.error(err);
+  } catch (e) {
+    logger.error(e.stack);
   }
 }
 
@@ -206,7 +206,7 @@ DatabaseContext.prototype.upsert = async function (item, filterOn) {
           await this.container.items.upsert(modelToDb(dbItem));
       id = createdItem.id;
     } catch (e) {
-      logger.error(e);
+      logger.error(e.stack);
     }
   }
   if (created) {
@@ -244,7 +244,7 @@ DatabaseContext.prototype.delete = async function (item) {
         return true;
       }
     } catch (e) {
-      logger.error(e);
+      logger.error(e.stack);
     }
   }
   return false;

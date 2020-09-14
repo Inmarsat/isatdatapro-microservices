@@ -1,9 +1,0 @@
-{
-  "ApiCallLog": "api_call_log",
-  "Mailbox": "mailbox",
-  "Message": "message",
-  "MessageReturn": "message_return",
-  "MessageForward": "message_forward",
-  "Mobile": "mobile",
-  "SatelliteGateway": "satellite_gateway"
-}

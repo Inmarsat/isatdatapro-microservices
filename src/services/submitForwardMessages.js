@@ -88,10 +88,13 @@ module.exports = async function(mobileId, commandMessage) {
         }
       }
     })
-    .catch(async (err) => {
-      logger.error(err);
-      let apiOutage = await handleApiFailure(err, idpGateway);
-      if (!apiOutage) throw err;
+    .catch(async function (err) {
+      let apiOutage =
+          await handleApiFailure(database, err, idpGateway, operation);
+      if (!apiOutage) {
+        logger.error(err.stack);
+        throw err;
+      }
     });
     await database.upsert(apiCallLog);
     return message.messageId;

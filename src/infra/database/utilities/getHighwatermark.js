@@ -33,7 +33,8 @@ async function getHighwatermark(database, mailboxId, operation) {
     desc: '_ts',
   };
   const category = ApiCallLog.prototype.category;
-  const apiCalls = await database.find(category, includeFilter, excludeFilter, options);
+  const apiCalls =
+      await database.find(category, includeFilter, excludeFilter, options);
   if (apiCalls.length > 0) {
     const lastCall = apiCalls[0];
     if (lastCall.nextStartId > 0) {

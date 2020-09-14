@@ -1,6 +1,5 @@
 'use strict';
 const Model = require('./Model');
-//const category = require('./categories.json').SatelliteGateway;
 
 /**
  * Represents a satellite messaging gateway / network API

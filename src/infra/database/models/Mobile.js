@@ -1,6 +1,5 @@
 'use strict';
 const Model = require('./Model');
-//const category = require('./categories.json').Mobile;
 
 /**
  * Represents the satellite modem
@@ -12,7 +11,7 @@ const Model = require('./Model');
 function Mobile(mobileId, description, mailboxId) {
   Model.call(this, this.category);
   this.mobileId = typeof(mobileId) !== 'undefined' ? mobileId : null;
-  this.description = typeof(description) !== 'undefined' ? description : '';
+  this.description = typeof(description) !== 'undefined' ? description : null;
   this.mailboxId = typeof(mailboxId) !== 'undefined' ? mailboxId : null;
   this.satelliteRegion = null;
   this.lastRegistrationTimeUtc = null;
@@ -21,12 +20,14 @@ function Mobile(mobileId, description, mailboxId) {
   this.operatorTxState = null;
   this.userTxState = null;
   this.mobileWakeupPeriod = 'None';
-  this.version = {
+  this.version = null;
+  /*version = {
     hardware: '0.0.0',
     firmware: '0.0.0',
     productId: '0',
-  };
-  this.location = {
+  };*/
+  this.location = null;
+  /*location = {
     latitude: 90.0,
     longitude: 180.0,
     altitude_m: 0.0,
@@ -34,7 +35,7 @@ function Mobile(mobileId, description, mailboxId) {
     heading: 0.0,
     timestamp: 0,
     fixStatus: 0,
-  };
+  };*/
   this.broadcastIdCount = 0;
   this.broadcastIds = [];
 }

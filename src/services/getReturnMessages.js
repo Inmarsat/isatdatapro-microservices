@@ -74,6 +74,9 @@ module.exports = async function () {
               if (message.payloadJson 
                   && message.payloadJson.codecServiceId === 0) {
                 const mobileMeta = parseModemMeta(message);
+                if (!mobileMeta) {
+                  throw new Error(`Failed to parse core modem data`);
+                }
                 Object.assign(mobile, mobileMeta);
               }
               let mobileFilter = { mobileId: message.mobileId };
@@ -102,9 +105,10 @@ module.exports = async function () {
       }
     })
     .catch(async function (err) {
-      let apiOutage = await handleApiFailure(err, database, idpGateway);
+      let apiOutage =
+          await handleApiFailure(database, err, idpGateway, operation);
       if (!apiOutage) {
-        logger.error(err);
+        logger.error(err.stack);
         throw err;
       }
     });
@@ -125,7 +129,7 @@ module.exports = async function () {
       logger.warn('No enabled Mailboxes found in database');
     }
   } catch (err) {
-    logger.error(err);
+    logger.error(err.stack);
     throw err;
   } finally {
     await database.close();

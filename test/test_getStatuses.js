@@ -21,4 +21,4 @@ const testGetStatuses = async() => {
   }
 };
 
-testGetStatuses();
+//testGetStatuses();

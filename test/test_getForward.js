@@ -28,4 +28,4 @@ const testGetForward = async(testMessage, mailboxId) => {
 
 const testMessageId = require('../config/local.settings.json').testFwdId;
 const testMailbox = require('../config/local.settings.json').testMailbox;
-testGetForward(testMessageId, testMailbox);
+//testGetForward(testMessageId, testMailbox);

@@ -351,76 +351,80 @@ const forwardMessages = {
   },
 };
 
-let returnCase = 0;
-const returnTests = [
-  'none',
-];
-for (let testCase in returnMessages) {
-  if (returnTests[0] === 'none') break;
-  if (returnTests.length === 0 || returnTests.includes(testCase)) {
-    returnCase += 1;
-    let message = returnMessages[testCase];
-    message.messageId = returnCase;
-    message.mobileId = '00000000MFREE3D';
-    message.codecServiceId = 0;
-    message.receiveTimeUtc = new Date().toISOString().substring(0, 19) + 'Z';
-    message.mailboxTimeUtc = message.receiveTimeUtc;
-    let response = coreModem.parse(message);
-    console.log(`${JSON.stringify(response)}`);
+function test() {
+  let returnCase = 0;
+  const returnTests = [
+    'none',
+  ];
+  for (let testCase in returnMessages) {
+    if (returnTests[0] === 'none') break;
+    if (returnTests.length === 0 || returnTests.includes(testCase)) {
+      returnCase += 1;
+      let message = returnMessages[testCase];
+      message.messageId = returnCase;
+      message.mobileId = '00000000MFREE3D';
+      message.codecServiceId = 0;
+      message.receiveTimeUtc = new Date().toISOString().substring(0, 19) + 'Z';
+      message.mailboxTimeUtc = message.receiveTimeUtc;
+      let response = coreModem.parse(message);
+      console.log(`${JSON.stringify(response)}`);
+    }
+  }
+  
+  let forwardCase = 0;
+  const forwardTests = [
+    'setSleepSchedule',
+  ];
+  for (let testCase in forwardMessages) {
+    if (forwardTests[0] === 'none') break;
+    if (forwardTests.length === 0 || forwardTests.includes(testCase)) {
+      forwardCase += 1;
+      let match = true;
+      let payloadJson;
+      switch (testCase) {
+        case 'reset':
+          payloadJson = coreModem.commandMessages.reset();
+          break;
+        case 'setSleepSchedule':
+          payloadJson = coreModem.commandMessages.setWakeupPeriod('None');
+          break;
+        case 'setTxMute':
+          payloadJson = coreModem.commandMessages.setTxMute(true);
+          break;
+        case 'getPosition':
+          payloadJson = coreModem.commandMessages.getLocation();
+          break;
+        default:
+          console.log(`No encoding defined for ${testCase}`);
+      }
+      if (payloadJson) {
+        const benchmark = forwardMessages[testCase].payloadJson;
+        for (let prop in benchmark) {
+          if (benchmark.hasOwnProperty(prop)) {
+            if (payloadJson.hasOwnProperty(prop)) {
+              if (payloadJson[prop] instanceof Array) {
+                payloadJson[prop].forEach(subProp => {
+                  if (benchmark[prop][subProp] !== payloadJson[prop][subProp]) {
+                    console.log(`Mismatch ${subProp}`);
+                    match = false;
+                  }
+                });
+              } else {
+                if (benchmark[prop] != payloadJson[prop]) {
+                  console.log(`Mismatch ${prop}`);
+                  match = false;
+                }
+              }
+            } else {
+              console.log(`Mismatch ${prop}`);
+              match = false;
+            }
+          }
+        }
+        if (match) { console.log(`Matched ${testCase}`) }
+      }
+    }
   }
 }
 
-let forwardCase = 0;
-const forwardTests = [
-  'setSleepSchedule',
-];
-for (let testCase in forwardMessages) {
-  if (forwardTests[0] === 'none') break;
-  if (forwardTests.length === 0 || forwardTests.includes(testCase)) {
-    forwardCase += 1;
-    let match = true;
-    let payloadJson;
-    switch (testCase) {
-      case 'reset':
-        payloadJson = coreModem.commandMessages.reset();
-        break;
-      case 'setSleepSchedule':
-        payloadJson = coreModem.commandMessages.setWakeupPeriod('None');
-        break;
-      case 'setTxMute':
-        payloadJson = coreModem.commandMessages.setTxMute(true);
-        break;
-      case 'getPosition':
-        payloadJson = coreModem.commandMessages.getLocation();
-        break;
-      default:
-        console.log(`No encoding defined for ${testCase}`);
-    }
-    if (payloadJson) {
-      const benchmark = forwardMessages[testCase].payloadJson;
-      for (let prop in benchmark) {
-        if (benchmark.hasOwnProperty(prop)) {
-          if (payloadJson.hasOwnProperty(prop)) {
-            if (payloadJson[prop] instanceof Array) {
-              payloadJson[prop].forEach(subProp => {
-                if (benchmark[prop][subProp] !== payloadJson[prop][subProp]) {
-                  console.log(`Mismatch ${subProp}`);
-                  match = false;
-                }
-              });
-            } else {
-              if (benchmark[prop] != payloadJson[prop]) {
-                console.log(`Mismatch ${prop}`);
-                match = false;
-              }
-            }
-          } else {
-            console.log(`Mismatch ${prop}`);
-            match = false;
-          }
-        }
-      }
-      if (match) { console.log(`Matched ${testCase}`) }
-    }
-  }
-}
+//test();

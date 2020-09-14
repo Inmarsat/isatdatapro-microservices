@@ -5,7 +5,13 @@
 
 const normalizedPath = require('path').join(__dirname);
 let models = {};
-const EXCLUDES = ['categories', 'index', 'Model', 'Message', 'MessagePayloadJson'];
+const EXCLUDES = [
+  'categories',
+  'index',
+  'Model',
+  'Message',
+  'MessagePayloadJson'
+];
 
 require('fs').readdirSync(normalizedPath).forEach(file => {
   let moduleName = file.split('.')[0];

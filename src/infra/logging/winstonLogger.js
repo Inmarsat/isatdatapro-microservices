@@ -1,7 +1,6 @@
 /**
  * Custom Winston logger producing JSON format
  * {UTC timestamp, level, message, <meta>}
- * 
  */
 'use strict';
 

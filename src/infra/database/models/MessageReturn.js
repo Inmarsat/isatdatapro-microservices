@@ -1,7 +1,6 @@
 'use strict';
 const Message = require('./Message');
 const { Payload, Fields } = require('./MessagePayloadJson');
-//const category = require('./categories.json').MessageReturn;
 
 /**
  * Represents a Return (Mobile-Originated) message
@@ -16,11 +15,13 @@ const { Payload, Fields } = require('./MessagePayloadJson');
  * @param {string} satelliteRegion Identifier for the satellite beam used
  * @param {string|number} mailboxId Unique Mailbox ID
  */
-function MessageReturn(messageId, mobileId, codecServiceId, payloadRaw, payloadJson, mailboxTimeUtc, receiveTimeUtc, satelliteRegion, mailboxId) {
+function MessageReturn(messageId, mobileId, codecServiceId,
+      payloadRaw, payloadJson, mailboxTimeUtc, receiveTimeUtc,
+      satelliteRegion, mailboxId) {
   Message.call(this, messageId, mobileId);
-  //this.category = category;
   this.subcategory = 'return';
-  this.codecServiceId = typeof(codecServiceId) === 'number' ? codecServiceId : null;
+  this.codecServiceId =
+      typeof(codecServiceId) === 'number' ? codecServiceId : null;
   if (payloadRaw instanceof Array) {
     this.payloadRaw = payloadRaw;
     this.codecServiceId = payloadRaw[0];
@@ -31,9 +32,12 @@ function MessageReturn(messageId, mobileId, codecServiceId, payloadRaw, payloadJ
     this.codecServiceId = payloadJson.codecServiceId;
     this.codecMessageId = payloadJson.codecMessageId;
   }
-  this.mailboxTimeUtc = typeof(mailboxTimeUtc) === 'string' ? mailboxTimeUtc : null;
-  this.receiveTimeUtc = typeof(receiveTimeUtc) === 'string' ? receiveTimeUtc : null;
-  this.satelliteRegion = typeof(satelliteRegion) === 'string' ? satelliteRegion : null;
+  this.mailboxTimeUtc =
+      typeof(mailboxTimeUtc) === 'string' ? mailboxTimeUtc : null;
+  this.receiveTimeUtc =
+      typeof(receiveTimeUtc) === 'string' ? receiveTimeUtc : null;
+  this.satelliteRegion =
+      typeof(satelliteRegion) === 'string' ? satelliteRegion : null;
   this.mailboxId = typeof(mailboxId) === 'string' ? mailboxId : null;
 }
 

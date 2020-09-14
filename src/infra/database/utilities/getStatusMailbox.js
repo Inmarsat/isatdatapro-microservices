@@ -12,10 +12,9 @@ const getMobileMailbox = require('./getMobileMailbox');
  * @throws {Error} if messageId or mobileId not found in database
  */
 async function getStatusMailbox(database, messageId) {
-  //let message = new MessageForward();
   let filterMessage = { messageId: messageId };
-  const findMessage = await database.find(MessageForward.prototype.category, 
-      filterMessage);
+  const findMessage =
+      await database.find(MessageForward.prototype.category, filterMessage);
   if (findMessage.length > 0) {
     const message = findMessage[0];
     if (message.mobileId) {
