@@ -9,6 +9,47 @@ sending data, and API/server errors.
 
 [Documentation](https://inmarsat.github.io/isatdatapro-microservices/)
 
+## Installation
+
+```
+npm i isatdatapro-microservices
+```
+
+## Configuration
+
+The library relies on the following environment variable settings.
+
+The database particulars are configured as environment variables:
+
+* **``DB_TYPE``** supports ``azureCosmos`` or ``mysql``
+
+For [Cosmos DB](./module-repositories_azureCosmosRepository-DatabaseContext.html):
+
+* **``COSMOS_DB_HOST``** is the Azure URL for the Cosmos DB
+* **``COSMOS_DB_PASS``** is the password for the Cosmos DB
+* **``COSMOS_DB_NAME``** is the database name e.g. IsatDataPro
+* **``COSMOS_DB_CONTAINER``** is the container name e.g. Main
+* **``COSMOS_DB_PARTITION``** is the partition name i.e. ``category``
+* **``COSMOS_DB_THROUGHPUT``** is the default throughput e.g. 400
+
+For [MySQL](./module-repositories_mysqlRepository-DatabaseContext.html):
+
+* **``MYSQL_DB_HOST``** is the MySQL host name e.g. localhost
+* **``MYSQL_DB_USER``** is the access name e.g. root
+* **``MYSQL_DB_PASS``** is the password
+* **``MYSQL_DB_NAME``** is the name of the database e.g. IsatDataPro
+
+Encryption of Mailbox passwords uses a secret defined in an environment variable:
+
+* **``MAILBOX_SECRET``** is a string used as the encryption key
+
+The following environment variables are optional with defaults in the code:
+
+* **``SATELLITE_HISTORY_HOURS=48``** the number of hours to go back on first API 
+call for message/status retrieval
+* **``DB_TTL_DAYS_API=7``** time to live for ApiCallLog entries in database
+* **``DB_TTL_DAYS_MSG=90``** time to live for message entries in database
+
 ## Infrastructure
 
 ### Database
@@ -17,34 +58,34 @@ sending data, and API/server errors.
 
 The database supports the following model concepts:
 
-* [**SatelliteGateway**](./docs/SatelliteGateway.html) represents the API server 
+* [**SatelliteGateway**](./SatelliteGateway.html) represents the API server 
 operated by Inmarsat or another authorized network operator.
 ``category = 'satellite_gateway'`` with ``name`` as the model-unique key.
 
-* [**Mailbox**](./docs/Mailbox.html) represents an account providing authentication 
+* [**Mailbox**](./Mailbox.html) represents an account providing authentication 
 and segregation of customer data access.  These are configured with 
 authentication credentials, where the password component is [encrypted] for 
 storage.  ``category = 'mailbox'`` with ``mailboxId`` as the model-unique key.
 
-* [**Mobile**](./docs/Mobile.html) represents a satellite modem associated with a 
+* [**Mobile**](./Mobile.html) represents a satellite modem associated with a 
 remote asset/device and supports various metadata related to configuration, 
 queried location and diagnostic information.  ``category = 'mobile'`` 
 with ``mobileId`` as the model-unique key.
 
-* [**MessageReturn**](./docs/MessageReturn.html) represents mobile-originated 
+* [**MessageReturn**](./MessageReturn.html) represents mobile-originated 
 (aka *Return*) data, typically device telemetry or responses to low-level modem 
 commands.  These messages contain data as raw binary and/or JSON structures 
 depending on whether a *Message Definition File* is provisioned on the *Mailbox*.  
 ``category = 'message_return'`` with ``messageId`` as the model-unique key.
 
-* [**MessageForward**](./docs/MessageForward.html) represents mobile-terminated 
+* [**MessageForward**](./MessageForward.html) represents mobile-terminated 
 (aka *Forward*) data, typically commands or small files sent to the device from 
 a cloud-based application.  These messages contain data as raw binary and/or 
 JSON structures depending on how they are submitted and whether a 
 *Message Definition File* is provisioned on the *Mailbox*.  
 ``category = 'message_forward'``  with ``messageId`` as the model-unique key.
 
-* [**ApiCallLog**](./docs/ApiCallLog.html) record the low-level API transactions 
+* [**ApiCallLog**](./ApiCallLog.html) record the low-level API transactions 
 to the Inmarsat server including various metadata used as a "high water mark" 
 for message retrieval and for diagnostic purposes.  
 ``category = 'api_call_log'`` with ``callTimeUtc`` as the model-unique key.
@@ -77,27 +118,6 @@ unique key.
 
 4. **``close()``** terminates the connection after use.
 
-#### Configuration
-
-The database particulars are configured as environment variables:
-
-* **``DB_TYPE``** supports ``azureCosmos`` or ``mysql``
-
-For [Cosmos DB](./docs/module-repositories_azureCosmosRepository-DatabaseContext.html):
-
-* **``COSMOS_DB_HOST``** is the Azure URL for the Cosmos DB
-* **``COSMOS_DB_PASS``** is the password for the Cosmos DB
-* **``COSMOS_DB_NAME``** is the database name e.g. IsatDataPro
-* **``COSMOS_DB_CONTAINER``** is the container name e.g. Main
-* **``COSMOS_DB_PARTITION``** is the partition name i.e. ``category``
-* **``COSMOS_DB_THROUGHPUT``** is the default throughput e.g. 400
-
-For [MySQL](./docs/module-repositories_mysqlRepository-DatabaseContext.html):
-
-* **``MYSQL_DB_HOST``** is the MySQL host name e.g. localhost
-* **``MYSQL_DB_USER``** is the access name e.g. root
-* **``MYSQL_DB_PASS``** is the password
-* **``MYSQL_DB_NAME``** is the name of the database e.g. IsatDataPro
 
 ### Encryption
 
@@ -109,7 +129,7 @@ encrypted by TLS in transit.
 
 ### Event Handler
 
-The [``eventHandler.emitter``](./docs/module-eventHandler.html) is implemented as a 
+The [``eventHandler.emitter``](./module-eventHandler.html) is implemented as a 
 Node *events* emitter intended for use as a singleton, which emits the 
 following dependent on the microservice in play:
 
@@ -139,7 +159,7 @@ outage.
 
 ### Logging
 
-A Winston [logger](./docs/module-logging.html) is included to provide 
+A Winston [logger](./module-logging.html) is included to provide 
 JSON-structured logs with a standard format and UTC timestamp for 
 troubleshooting.  A proxy logger is exposed for convenience use by applications 
 using the library.
@@ -147,7 +167,7 @@ using the library.
 ### Message Codecs
 
 All IsatData Pro modems support a standard set of basic remote operations 
-referred to as [*Core Modem Messages*](./docs/module-messageCodecs_coreModem.html) 
+referred to as [*Core Modem Messages*](./module-messageCodecs_coreModem.html) 
 which are normally presented as JSON-structured data on the API and contain 
 metadata about the modem.
 
@@ -160,7 +180,7 @@ send over the air.
 
 The JSON-structured data employs a so-called *common message format* supporting 
 various data types encoded as binary data over the satellite link.  To make use 
-of [``commonMessageFormat``](./docs/module-messageCodecs_commonMessageFormat.html) 
+of [``commonMessageFormat``](./module-messageCodecs_commonMessageFormat.html) 
 for application messages, contact your Inmarsat representative to discuss the 
 concept of *Message Definition File* in your application.
 
@@ -171,38 +191,38 @@ this library.  Before using the microservices it is necessary to "provision" at
 least one *SatelliteGateway* (API URL) and one *Mailbox* with valid access 
 credentials.
 
-* [**``getReturnMessages``**](./docs/module-getReturnMessages.html) is intended to 
+* [**``getReturnMessages``**](./module-getReturnMessages.html) is intended to 
 run periodically (e.g. every 15 seconds) to retrieve new messages coming in from 
 all modems accessed by the provisioned *Mailbox*(es).  
 Events emitted include ``NewReturnMessage``, ``NewMobile``.
 
-* [**``submitForwardMessages``**](./docs/module-submitForwardMessages.html) is called 
+* [**``submitForwardMessages``**](./module-submitForwardMessages.html) is called 
 destined to a specific *mobileId* with specific commands, an array of 
 decimal-coded bytes *payloadRaw* or an application-specific *payloadJson*.  
 Events emitted include ``NewForwardMessage``.
 
-* [**``getForwardStatuses``**](./docs/module-getForwardStatuses.html) is intended to 
+* [**``getForwardStatuses``**](./module-getForwardStatuses.html) is intended to 
 be run periodically, in particular following the use of 
 ``submitForwardMessages`` to monitor the progression of commands or 
 mobile-terminated data.  Events emitted include ``ForwardMessageStateChange``, 
 ``OtherClientForwardSubmission``.
 
-* [**``getForwardMessages``**](./docs/module-getForwardMessages.html) is intended to 
+* [**``getForwardMessages``**](./module-getForwardMessages.html) is intended to 
 be used following a ``OtherClientForwardSubmission`` event, to retrieve the 
 content of a message submitted by a means other than ``submitForwardMessages`` 
 (which generally implies another API client is accessing the Mailbox in 
 parallel).
 
-* [**``updateMailbox``**](./docs/module-updateMailbox.html) is used to add a 
+* [**``updateMailbox``**](./module-updateMailbox.html) is used to add a 
 *Mailbox* to the database which will subsequently be polled by 
 ``getReturnMessages`` and accessible for ``submitForwardMessages``.  
 A *Mailbox* is the parent of one or more *Mobile*(s).
 
-* [**``updateSatelliteGateway``**](./docs/module-updateSatelliteGateway.html) is used 
+* [**``updateSatelliteGateway``**](./module-updateSatelliteGateway.html) is used 
 to add a *SatelliteGateway* to the database as the parent of one or more 
 *Mailbox*(es).
 
-* [**``getMobiles``**](./docs/module-getMobiles.html) may be used to retrieve the 
+* [**``getMobiles``**](./module-getMobiles.html) may be used to retrieve the 
 list of *Mobile*(s) metadata from the provisioned *Mailbox*(es).  This operation 
 is useful if a given Mobile has not yet sent any return messages.
 

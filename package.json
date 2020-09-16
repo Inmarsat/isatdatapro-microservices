@@ -15,14 +15,18 @@
     "url": "git+https://github.com/gbrucepayne/isatdatapro-microservices.git"
   },
   "keywords": [
-    "IoT"
+    "IoT",
+    "IsatData Pro",
+    "IDP",
+    "Inmarsat",
+    "satellite"
   ],
   "author": "G.Bruce-Payne",
   "license": "Apache-2.0",
   "bugs": {
-    "url": "https://github.com/gbrucepayne/isatdatapro-microservices/issues"
+    "url": "https://github.com/Inmarsat/isatdatapro-microservices/issues"
   },
-  "homepage": "https://github.com/gbrucepayne/isatdatapro-microservices#readme",
+  "homepage": "https://github.com/Inmarsat/isatdatapro-microservices#readme",
   "dependencies": {
     "@azure/cosmos": "~3.7.2",
     "dotenv": "~8.2.0",
