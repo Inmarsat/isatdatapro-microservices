@@ -1,3 +1,7 @@
+/**
+ * MySQL Repository Module
+ * @module repositories/mysqlRepository
+ */
 //: Wraps mysql with promisify for query and end
 'use strict';
 
@@ -81,7 +85,13 @@ function buildSchema() {
 }
 
 /**
- * DatabaseContext class
+ * Creates a MySQL connection.
+ * Uses environment variables:
+ * * ``DB_TYPE=mysql``
+ * * ``MYSQL_DB_HOST=`` the host name e.g. localhost
+ * * ``MYSQL_DB_USER=`` the user name e.g. root
+ * * ``MYSQL_DB_PASS=`` the password for the user
+ * * ``MYSQL_DB_NAME=`` the name of the database e.g. IsatDataPro
  * @constructor
  */
 function DatabaseContext() {
@@ -163,10 +173,10 @@ DatabaseContext.prototype.initialize = async function() {
 
 /**
  * Returns database entries matching a criteria
- * @param {string} category 
+ * @param {string} category the model category e.g. ``message_return``
  * @param {Object} [include] key/value pairs for equality filtering
  * @param {Object} [exclude] key/value pairs for inequality filtering
- * @param {Object} [options] e.g. { limit: 1, desc: 'dbTimestamp' }
+ * @param {Object} [options] e.g. ``{ limit: 1, desc: 'dbTimestamp' }``
  * @param {number} [options.limit] Maximum items to return
  * @param {string} [options.desc] Property to sort descending (e.g. _ts timestamp)
  * @param {string} [options.asc] Property to sort descending (e.g. _ts timestamp)

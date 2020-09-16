@@ -1,3 +1,7 @@
+/**
+ * getForwardStatuses module
+ * @module getForwardStatuses
+ */
 'use strict';
 
 const logger = require('../infra/logging').loggerProxy(__filename);
@@ -8,8 +12,14 @@ const { ApiCallLog, MessageForward } = require('../infra/database/models');
 const event = require('../infra/eventHandler');
 
 /**
- * Retrieves all outstanding forward message statuses from all Mailboxes
- * Emits events for ForwardMessageStateChange, OtherClientForwardSubmission
+ * Retrieves all outstanding forward message statuses from all Mailboxes.
+ * 
+ * Emits events:
+ * * ``ForwardMessageStateChange``
+ * * ``OtherClientForwardSubmission``
+ * * ``ApiError``
+ * * ``ApiOutage``
+ * * ``ApiRecovery``
  */
 module.exports = async function() {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -19,6 +29,7 @@ module.exports = async function() {
 
   /**
    * Retrieves Forward message statuses using high water mark
+   * @private
    * @param {Mailbox} mailbox The mailbox entity to query
    * @param {object} [filter] Optional filter parameters
    */

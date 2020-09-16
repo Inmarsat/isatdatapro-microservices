@@ -1,0 +1,29 @@
+{
+  "plugins": [
+    "plugins/markdown"
+  ],
+  "tags": {
+    "allowUnknownTags": true,
+    "dictionaries": ["jsdoc", "closure"]
+  },
+  "source": {
+    "include": [
+      "./src"
+    ],
+    "includePattern": ".+\\.js(doc)?$",
+    "excludePattern": "(^|\\/|\\\\)_"
+  },
+  "linenums": false,
+  "templates": {
+    "cleverLinks": true,
+    "monospaceLinks": false
+  },
+  "opts": {
+    "encoding": "utf8",
+    "sort": false,
+    "destination": "./docs",
+    "recurse": true,
+    "template": "./node_modules/jaguarjs-jsdoc",
+    "readme": "README.md"
+  }
+}

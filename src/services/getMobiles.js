@@ -1,3 +1,7 @@
+/**
+ * getMobiles module
+ * @module getMobiles
+ */
 'use strict';
 
 const logger = require('../infra/logging').loggerProxy(__filename);
@@ -9,7 +13,8 @@ const event = require('../infra/eventHandler');
 
 /**
  * Retrieves all Mobile metadata provisioned against a Mailbox
- * Emits event for NewMobile
+ * 
+ * Emits event: ``NewMobile``
  * @param {string} satelliteGatewayName Shorthand name of the network gateway
  * @param {(number|string)} mailboxId Unique Mailbox ID to retrieve from
  */

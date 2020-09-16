@@ -1,4 +1,7 @@
-// getReturnMessages microservice
+/**
+ * getReturnMessages module
+ * @module getReturnMessages
+ */
 'use strict';
 
 const logger = require('../infra/logging').loggerProxy(__filename);
@@ -11,9 +14,15 @@ const parseModemMeta = require('../infra/messageCodecs/coreModem').parse;
 
 /**
  * Fetches new mobile-originated messages, stores by unique ID and puts
- * API metadata in the database for use as high water mark
- * Updates Mobile metadata from Core Modem messages
- * Emits events for NewReturnMessage, NewMobile
+ * API metadata in the database for use as high water mark.  
+ * Updates Mobile metadata from Core Modem messages.  
+ * 
+ * Emits events:
+ * * ``NewReturnMessage``
+ * * ``NewMobile``
+ * * ``ApiError``
+ * * ``ApiOutage``
+ * * ``ApiRecovery``
  */
 module.exports = async function () {
   const thisFunction = {name: logger.getModuleName(__filename)};
@@ -24,6 +33,7 @@ module.exports = async function () {
   /**
    * Retreives Mobile-Originated messages and stores unique ones in a database
    * Also logs API calls in a database and uses for high water mark retrieval
+   * @private
    * @param {Object} mailbox Mailbox entity including credentials
    * @param {object} [filter] Optional filter (intended for "more" messages)
    */

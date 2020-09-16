@@ -1,3 +1,7 @@
+/**
+ * submitForwardMessages module
+ * @module submitForwardMessages
+ */
 'use strict';
 
 const logger = require('../infra/logging').loggerProxy(__filename);
@@ -16,8 +20,14 @@ const event = require('../infra/eventHandler');
  */
 
 /**
- * Submits a command/message to a specified remote modem
- * Emits events for NewForwardMessage, NewMobile
+ * Submits a command/message to a specified remote modem.
+ * 
+ * Emits events:
+ * * ``NewForwardMessage``
+ * * ``NewMobile``
+ * * ``ApiError``
+ * * ``ApiOutage``
+ * * ``ApiRecovery``
  * @param {string} mobileId The destination of the message
  * @param {Object} commandMessage A wrapper for the command/message
  * @param {Object} [commandMessage.payloadJson]
@@ -31,7 +41,8 @@ module.exports = async function(mobileId, commandMessage) {
   await database.initialize();
 
   /**
-   * Submits a single message to a mobile / broadcast group and stores the result
+   * Submits a single message to a mobile/broadcast group and stores the result
+   * @private
    * @param {MessageForward} message A forward message entity
    * @returns {number} the message ID
    */

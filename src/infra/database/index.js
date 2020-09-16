@@ -1,5 +1,6 @@
 /**
- * Loader for database modules
+ * Database module
+ * @module infra/database
  */
 'use strict';
 

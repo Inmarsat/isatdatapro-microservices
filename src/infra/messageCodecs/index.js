@@ -1,6 +1,3 @@
-/**
- * Loader for database modules
- */
 'use strict';
 
 const normalizedPath = require('path').join(__dirname);

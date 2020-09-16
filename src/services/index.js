@@ -1,6 +1,3 @@
-/**
- * Loader for service modules
- */
 'use strict';
 
 const normalizedPath = require('path').join(__dirname);

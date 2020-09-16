@@ -1,3 +1,7 @@
+/**
+ * getForwardMessages module
+ * @module getForwardMessages
+ */
 'use strict';
 
 const logger = require('../infra/logging').loggerProxy(__filename);
@@ -8,8 +12,14 @@ const { ApiCallLog, MessageForward, Mobile } = require('../infra/database/models
 const event = require('../infra/eventHandler');
 
 /**
- * Retrieves a specific list of messages by unique ID
- * Emits events for NewForwardMessage, NewMobile
+ * Retrieves a specific list of messages by unique ID.
+ * 
+ * Emits events:
+ * * ``NewForwardMessage``
+ * * ``NewMobile``
+ * * ``ApiError``
+ * * ``ApiOutage``
+ * * ``ApiRecovery``
  * @param {number|string} mailboxId The unique Mailbox ID to retrieve from
  * @param {(number[]|number)} messageIds Unique/list of message IDs to retrieve
  */
@@ -22,6 +32,7 @@ module.exports = async function(mailboxId, messageIds) {
 
   /**
    * Retrieves a forward message by ID and puts in the database
+   * @private
    * @param {number} messageId The forward message ID
    * @param {(string|number)} mailboxId The unique Mailbox ID
    */

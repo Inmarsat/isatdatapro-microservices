@@ -1,3 +1,7 @@
+/**
+ * Core Modem Codec module
+ * @module messageCodecs/coreModem
+ */
 'use strict';
 
 const codecServiceId = 0;

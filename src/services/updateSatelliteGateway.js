@@ -1,3 +1,7 @@
+/**
+ * updateSatelliteGateway module
+ * @module updateSatelliteGateway
+ */
 'use strict';
 
 const logger = require('../infra/logging').loggerProxy(__filename);

@@ -1,3 +1,7 @@
+/**
+ * Common Message Format module
+ * @module messageCodecs/commonMessageFormat
+ */
 'use strict';
 
 /**

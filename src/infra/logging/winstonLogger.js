@@ -4,6 +4,10 @@
  */
 'use strict';
 
+/**
+ * logging module
+ * @module logging
+ */
 require('dotenv').config();
 const { createLogger, format, transports, config } = require('winston');
 const { combine, timestamp, colorize, printf } = format;
@@ -13,6 +17,7 @@ const logfileLocation = process.env.LOGFILE_LOCATION || `./logs/info.log`;
 
 /**
  * Generates the custom JSON formatting
+ * @private
  * @param {object} info Logger object parameters and metadata
  * @returns {string} formatted log entry
  */

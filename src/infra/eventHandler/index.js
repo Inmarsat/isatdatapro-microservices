@@ -1,13 +1,18 @@
 /**
- * Event emitter bus (singleton)
+ * Event handler module
+ * @module eventHandler
  */
 'use strict';
 
 const { EventEmitter } = require('events');
+
+/**
+ * The event emitter singleton
+ */
 const emitter = new EventEmitter();
 
 /**
- * Emits a NewMobile event with Mobile metadata
+ * Emits a ``NewMobile`` event with Mobile model metadata.
  * @param {Object} mobile Uses Mobile model
  */
 function newMobile(mobile) {
@@ -15,7 +20,7 @@ function newMobile(mobile) {
 }
 
 /**
- * Emits a NewReturnMessage event with message metadata
+ * Emits a ``NewReturnMessage`` event with MessageReturn model metadata.
  * @param {Object} message Uses MessageReturn model
  */
 function newReturnMessage(message) {
@@ -23,7 +28,8 @@ function newReturnMessage(message) {
 }
 
 /**
- * Emits a NewForwardMessage event with message metadata
+ * Emits a ``NewForwardMessage`` event with MessageForward model metadata:
+ * 
  * @param {Object} message Uses MessageForward model
  */
 function newForwardMessage(message) {
@@ -31,7 +37,17 @@ function newForwardMessage(message) {
 }
 
 /**
- * Emits a ForwardMessageStateChange event with metadata
+ * Emits a ``ForwardMessageStateChange`` event with metadata:
+ * ```
+ * {
+ *   messageId: number,
+ *   mobileId: (string|undefined),
+ *   newState: string,
+ *   reason: string,
+ *   verbose: string
+ * }
+ * ```
+ * 
  * mobileId may not be known if the message was submitted by another client;
  * ideally other client submissions trigger a different event
  * @param {number} messageId Unique forward message ID from the Status
@@ -47,8 +63,15 @@ function forwardMessageStateChange(messageId, newState, reason, mobileId) {
 }
 
 /**
- * Emits a OtherClientForwardSubmission event with metadata 
- * to be used for message retrieval
+ * Emits a ``OtherClientForwardSubmission`` event with metadata 
+ * to be used for message retrieval:
+ * ```
+ * {
+ *   messageId: number,
+ *   mailboxId: (number|string),
+ *   verbose: string
+ * }
+ * ```
  * @param {number} messageId Unique forward message ID from the Status
  * @param {string|number} mailboxId Unique mailbox ID
  */
@@ -59,7 +82,13 @@ function otherClientForwardSubmission(messageId, mailboxId) {
 }
 
 /**
- * Emits a ApiError event with metadata
+ * Emits a ``ApiError`` event with metadata:
+ * ```
+ * {
+ *   operation: string,
+ *   error: string
+ * }
+ * ```
  * @param {string} operation The API operation that resulted in error
  * @param {number} error 
  */
@@ -68,7 +97,14 @@ function apiError(operation, error) {
 }
 
 /**
- * Emits a ApiOutage event with metadata
+ * Emits a ``ApiOutage`` event with metadata:
+ * ```
+ * {
+ *   satelliteGatewayName: string,
+ *   timestamp: string,
+ *   verbose: string
+ * }
+ * ```
  * @param {string} satelliteGatewayName The gateway name
  * @param {string} timestamp The ISO datetime of the outage
  * @param {string} source The API operation that was non-responsive
@@ -79,7 +115,14 @@ function apiOutage(satelliteGatewayName, timestamp, source) {
 }
 
 /**
- * Emits a ApiOutage event with metadata
+ * Emits a ``ApiRecovery`` event with metadata
+ * ```
+ * {
+ *   satelliteGatewayName: string,
+ *   timestamp: string,
+ *   verbose: string
+ * }
+ * ```
  * @param {string} satelliteGatewayName The gateway name
  * @param {string} timestamp The ISO datetime of the outage
  * @param {string} source The API operation that was non-responsive

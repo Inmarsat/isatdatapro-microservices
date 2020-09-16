@@ -1,4 +1,7 @@
-//: Database operations for Cosmos DB
+/**
+ * Cosmos DB Repository Module
+ * @module repositories/azureCosmosRepository
+ */
 'use strict';
 
 require('dotenv').config();
@@ -17,7 +20,15 @@ const partitionKey = {
 const throughput = process.env.COSMOS_DB_THROUGHPUT;
 
 /**
- * Creates a Cosmos DB connection
+ * Creates a Cosmos DB connection.
+ * Uses environment variables:
+ * * ``DB_TYPE=azureCosmos``
+ * * ``COSMOS_DB_HOST=`` the Cosmos URI/URL
+ * * ``COSMOS_DB_PASS=`` the password
+ * * ``COSMOS_DB_NAME=`` the name e.g. IsatDataPro
+ * * ``COSMOS_DB_CONTAINER=`` the container e.g. Main
+ * * ``COSMOS_DB_PARTITION=category`` the partition key
+ * * ``COSMOS_DB_THROUGHPUT`` the throughput e.g. 400
  * @constructor
  */
 function DatabaseContext() {
@@ -57,10 +68,10 @@ DatabaseContext.prototype.initialize = async function () {
 
 /**
  * Returns database entries matching a criteria
- * @param {string} category 
+ * @param {string} category the model category e.g. ``message_return``
  * @param {Object} [include] key/value pairs for equality filtering
  * @param {Object} [exclude] key/value pairs for inequality filtering
- * @param {Object} [options] e.g. { limit: 1, desc: 'dbTimestamp' }
+ * @param {Object} [options] e.g. ``{ limit: 1, desc: 'dbTimestamp' }``
  * @param {number} [options.limit] Maximum items to return
  * @param {string} [options.desc] Property to sort descending (e.g. _ts timestamp)
  * @param {string} [options.asc] Property to sort descending (e.g. _ts timestamp)

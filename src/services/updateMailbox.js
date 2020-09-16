@@ -1,3 +1,7 @@
+/**
+ * updateMailbox module
+ * @module updateMailbox
+ */
 'use strict';
 
 const logger = require('../infra/logging').loggerProxy(__filename);
