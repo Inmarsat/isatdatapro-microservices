@@ -52,10 +52,10 @@ function parse(message) {
     throw new Error(`Message ${message.messageId} has no JSON payload to parse`);
   }
   let parsedMessage = {
-    receivedTimeUtc: message.receivedTimeUtc,
+    receiveTimeUtc: message.receiveTimeUtc,
     codecServiceId: message.codecServiceId,
-    codecMessageId: message.codecMessageId,
-    name: message.name,
+    codecMessageId: message.payloadJson.codecMessageId,
+    name: message.payloadJson.name,
   };
   message.payloadJson.fields.forEach(field => {
     parsedMessage[field.name] = parseFieldValue(field);

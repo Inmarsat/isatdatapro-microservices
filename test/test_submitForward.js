@@ -9,14 +9,15 @@ const testSubmitForward = async(mobileId, message) => {
     let submission;
     if (message instanceof Array) {
       submission = { payloadRaw: message };
-    } else if (typeof message === 'object' && 'command' in message) {
+    } else if (typeof message === 'object') {
       if ('command' in message) {
         submission = { modemCommand: message };
       } else {
         submission = { payloadJson: message };
       }
     }
-    await submitMessage(mobileId, submission);
+    const messageId = await submitMessage(mobileId, submission);
+    console.log(`Submitted messageId ${messageId} to ${mobileId}`);
   } catch (err) {
     console.log(err);
   }
@@ -32,8 +33,16 @@ const reset = {
   params: 'ModemPreserve',
 };
 const setWakeupPeriod = {
-  command: 'setWakeupPeriod',
-  params: 'Seconds30',
+  codecServiceId: 0,
+  codecMessageId: 70,
+  fields: [
+    {
+      name: 'wakeupPeriod',
+      stringValue: '0'
+    }
+  ]
+  //command: 'setWakeupPeriod',
+  //params: 'Seconds30',
 };
 const mute = {
   command: 'setTxMute',

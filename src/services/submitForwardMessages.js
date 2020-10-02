@@ -32,9 +32,10 @@ const event = require('../infra/eventHandler');
  * @param {Object} commandMessage A wrapper for the command/message
  * @param {Object} [commandMessage.payloadJson]
  * @param {number[]} [commandMessage.payloadRaw] An array of decimal bytes [0..255]
- * @param {ModemCommand} [commandMessage.modemCommand]
+ * @param {ModemCommand} [commandMessage.modemCommand] A supported modem command shorthand
+ * @param {number} [userMessageId] an optional user message ID number
  */
-module.exports = async function(mobileId, commandMessage) {
+module.exports = async function(mobileId, commandMessage, userMessageId) {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
   const database = new DatabaseContext();
@@ -68,6 +69,9 @@ module.exports = async function(mobileId, commandMessage) {
           for (let s = 0; s < result.submissions.length; s++) {
             await message.fromApi(result.submissions[s]);
             message.mailboxId = mailbox.mailboxId;
+            message.mailboxTimeUtc = message.stateTimeUtc;
+            message.codecServiceId = message.getCodecServiceId();
+            message.codecMessageId = message.getCodecMessageId();
             if (message.errorId !== 0) {
               logger.debug(`Submission error: ${message.error}`);
             } else {
@@ -117,6 +121,7 @@ module.exports = async function(mobileId, commandMessage) {
     }
     let message = new MessageForward();
     message.mobileId = mobileId;
+    if (userMessageId) message.userMessageId = userMessageId;
     if (commandMessage.modemCommand) {
       if (commandMessage.modemCommand.command in supportedCommands) {
         const command = commandMessage.modemCommand.command;
@@ -136,9 +141,9 @@ module.exports = async function(mobileId, commandMessage) {
     }
     let messageId = await submitMessage(message);
     if (messageId) {
-      return true;
+      return messageId;
     } else {
-      return false;
+      return null;
     }
   } catch (err) {
     logger.error(err.stack);
