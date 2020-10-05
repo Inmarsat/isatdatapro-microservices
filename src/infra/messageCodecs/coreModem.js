@@ -706,8 +706,11 @@ function commandReset(resetType) {
     for (let t in resetTypes) {
       if (resetTypes[t] === resetType) {
         resetType = t;
+        break;
       }
     }
+  } else if (typeof(resetType) === 'string') {
+    resetType = resetType[0].toUpperCase() + resetType.split(1);
   }
   if (!(resetType in resetTypes)) {
     throw new Error(`Invalid resetType ${resetType}`)
@@ -743,6 +746,8 @@ function commandSetMobileWakeupPeriod(mobileWakeupPeriod) {
   }
   
   if (typeof(mobileWakeupPeriod) === 'string') {
+    mobileWakeupPeriod =
+        mobileWakeupPeriod[0].toUpperCase() + mobileWakeupPeriod.slice(1);
     if (!(mobileWakeupPeriod in wakeupPeriods)) {
       valueError();
     }

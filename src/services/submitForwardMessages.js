@@ -13,10 +13,26 @@ const supportedCommands = require('../infra/messageCodecs/coreModem').commandMes
 const event = require('../infra/eventHandler');
 
 /**
- * A command structure for standard core modem operations
+ * A command structure shorthand for standard core modem operations
  * @typedef {Object} ModemCommand
- * @param {string} command The shorthand command name
- * @param {*} [params] Parameters specific to the command
+ * @property {string} command The shorthand command name
+ *     <br>&nbsp;&nbsp;'ping' (no params)
+ *     <br>&nbsp;&nbsp;'getLocation' (no params)
+ *     <br>&nbsp;&nbsp;'setWakeupPeriod' (string)
+ *     <br>&nbsp;&nbsp;'getConfiguration' (no params)
+ *     <br>&nbsp;&nbsp;'reset' (optional string)
+ *     <br>&nbsp;&nbsp;'setTxMute' (boolean)
+ *     <br>&nbsp;&nbsp;'getBroadcastIds' (no params)
+ * @property {*} [params] Parameter(s) specific to the command
+ */
+
+/**
+ * A JSON message structure
+ * @typedef {Object} PayloadJson
+ * @property {number} codecServiceId A service definition number [16..255]
+ * @property {number} codecMessageId A message definition number [0..255]
+ * @property {string} [name] The message name
+ * @property {Object[]} fields A list of Field objects (https://github.com/Inmarsat/isatdatapro-api)
  */
 
 /**
@@ -29,13 +45,13 @@ const event = require('../infra/eventHandler');
  * * ``ApiOutage``
  * * ``ApiRecovery``
  * @param {string} mobileId The destination of the message
- * @param {Object} commandMessage A wrapper for the command/message
- * @param {Object} [commandMessage.payloadJson]
- * @param {number[]} [commandMessage.payloadRaw] An array of decimal bytes [0..255]
- * @param {ModemCommand} [commandMessage.modemCommand] A supported modem command shorthand
+ * @param {Object} message A wrapper for the command/message
+ * @param {Object} [message.payloadJson] 
+ * @param {number[]} [message.payloadRaw] An array of decimal bytes [0..255]
+ * @param {ModemCommand} [message.modemCommand] A supported modem command shorthand
  * @param {number} [userMessageId] an optional user message ID number
  */
-module.exports = async function(mobileId, commandMessage, userMessageId) {
+module.exports = async function(mobileId, message, userMessageId) {
   const thisFunction = {name: logger.getModuleName(__filename)};
   logger.debug(`>>>> ${thisFunction.name} entry`);
   const database = new DatabaseContext();
@@ -116,26 +132,26 @@ module.exports = async function(mobileId, commandMessage, userMessageId) {
   }
 
   try {
-    if (!mobileId || !commandMessage) {
+    if (!mobileId || !message) {
       throw new Error('Invalid arguments');
     }
     let message = new MessageForward();
     message.mobileId = mobileId;
     if (userMessageId) message.userMessageId = userMessageId;
-    if (commandMessage.modemCommand) {
-      if (commandMessage.modemCommand.command in supportedCommands) {
-        const command = commandMessage.modemCommand.command;
-        const params = commandMessage.modemCommand.params;
+    if (message.modemCommand) {
+      if (message.modemCommand.command in supportedCommands) {
+        const command = message.modemCommand.command;
+        const params = message.modemCommand.params;
         message.payloadJson = supportedCommands[command](params);
       } else {
         throw new Error(`Unsupported modem command:`
-            + ` ${commandMessage.modemCommand}`);
+            + ` ${message.modemCommand}`);
       }
-    } else if (commandMessage.payloadJson) {
+    } else if (message.payloadJson) {
       //TODO: validate payload structure
-      message.payloadJson = commandMessage.payloadJson;
-    } else if (commandMessage.payloadRaw) {
-      message.payloadRaw = commandMessage.payloadRaw;
+      message.payloadJson = message.payloadJson;
+    } else if (message.payloadRaw) {
+      message.payloadRaw = message.payloadRaw;
     } else {
       throw new Error('Invalid payload definition');
     }
