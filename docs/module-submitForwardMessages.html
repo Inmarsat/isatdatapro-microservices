@@ -353,12 +353,12 @@
     <div class="nameContainer">
         <h4 class="name" id="module:submitForwardMessages">
             
-            require("submitForwardMessages")<span class="signature">(mobileId, commandMessage)</span>
+            require("submitForwardMessages")<span class="signature">(mobileId, message, <span class="optional">userMessageId</span>)</span>
         </h4>
     
         
         <div class="tag-source">
-            services/submitForwardMessages.js, line 37
+            services/submitForwardMessages.js, line 54
         </div>
         
     </div>
@@ -424,6 +424,11 @@
             
             <td class="description last">
                 
+                    
+                    
+                        
+                    
+                
                 <p>The destination of the message</p></td>
         </tr>
 	
@@ -431,7 +436,7 @@
 	
         <tr>
             
-                <td class="name"><code>commandMessage</code></td>
+                <td class="name"><code>message</code></td>
             
             
             <td class="type">
@@ -446,6 +451,11 @@
             
             
             <td class="description last">
+                
+                    
+                    
+                        
+                    
                 
                 <p>A wrapper for the command/message</p>
                 
@@ -553,13 +563,43 @@
                         
                     
                 
-                </td>
+                <p>A supported modem command shorthand</p></td>
         </tr>
 	
 	
 	</tbody>
 </table>
             </td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>userMessageId</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+            
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                <p>an optional user message ID number</p></td>
         </tr>
 	
 	
@@ -672,12 +712,302 @@
 <dd>
     
     <div class="description">
-        <p>A command structure for standard core modem operations</p>
+        <p>A command structure shorthand for standard core modem operations</p>
     </div>
     
     
     
 <dl class="details">
+    
+        
+        <h5 class="subsection-title">Properties:</h5>
+        
+        <dl>
+
+<table class="props">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+		
+		<th>Type</th>
+		
+		
+		<th>Argument</th>
+		
+		
+		
+		
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+	
+	<tbody>
+	
+	
+        <tr>
+            
+                <td class="name"><code>command</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+            
+            
+                <td class="attributes">
+                
+                    
+                
+                </td>
+            
+            
+            
+            
+            <td class="description last"><p>The shorthand command name
+<br>  'ping' (no params)
+<br>  'getLocation' (no params)
+<br>  'setWakeupPeriod' (string)
+<br>  'getConfiguration' (no params)
+<br>  'reset' (optional string)
+<br>  'setTxMute' (boolean)
+<br>  'getBroadcastIds' (no params)</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>params</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">*</span>
+
+
+            
+            </td>
+            
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+                    
+                
+                </td>
+            
+            
+            
+            
+            <td class="description last"><p>Parameter(s) specific to the command</p></td>
+        </tr>
+	
+	
+	</tbody>
+</table></dl>
+        
+    
+        
+    
+    
+    
+
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+</dl>
+
+    
+    
+</dd>
+
+            
+                
+<dt>
+    <div class="nameContainer">
+        <h4 class="name" id="~PayloadJson">PayloadJson<span class="type-signature type object">Object</span> </h4>
+    </div>
+    
+    
+</dt>
+<dd>
+    
+    <div class="description">
+        <p>A JSON message structure</p>
+    </div>
+    
+    
+    
+<dl class="details">
+    
+        
+        <h5 class="subsection-title">Properties:</h5>
+        
+        <dl>
+
+<table class="props">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+		
+		<th>Type</th>
+		
+		
+		<th>Argument</th>
+		
+		
+		
+		
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+	
+	<tbody>
+	
+	
+        <tr>
+            
+                <td class="name"><code>codecServiceId</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+            
+            
+                <td class="attributes">
+                
+                    
+                
+                </td>
+            
+            
+            
+            
+            <td class="description last"><p>A service definition number [16..255]</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>codecMessageId</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">number</span>
+
+
+            
+            </td>
+            
+            
+                <td class="attributes">
+                
+                    
+                
+                </td>
+            
+            
+            
+            
+            <td class="description last"><p>A message definition number [0..255]</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>name</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+            
+            
+                <td class="attributes">
+                
+                    &lt;optional><br>
+                
+                    
+                
+                </td>
+            
+            
+            
+            
+            <td class="description last"><p>The message name</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>fields</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">Array.&lt;Object></span>
+
+
+            
+            </td>
+            
+            
+                <td class="attributes">
+                
+                    
+                
+                </td>
+            
+            
+            
+            
+            <td class="description last"><p>A list of Field objects (https://github.com/Inmarsat/isatdatapro-api)</p></td>
+        </tr>
+	
+	
+	</tbody>
+</table></dl>
+        
     
         
     
@@ -722,7 +1052,7 @@
         
 
         <footer>
-            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.4</a> on Wed Sep 16 2020 06:42:28 GMT-0400 (Eastern Daylight Time)
+            Documentation generated by <a target="_blank" href="https://github.com/jsdoc3/jsdoc">JSDoc 3.6.4</a> on Wed Oct 07 2020 17:37:09 GMT-0400 (Eastern Daylight Time)
         </footer>
     </div>
 </div>
