@@ -135,27 +135,27 @@ module.exports = async function(mobileId, message, userMessageId) {
     if (!mobileId || !message) {
       throw new Error('Invalid arguments');
     }
-    let message = new MessageForward();
-    message.mobileId = mobileId;
-    if (userMessageId) message.userMessageId = userMessageId;
+    let forwardMessage = new MessageForward();
+    forwardMessage.mobileId = mobileId;
+    if (userMessageId) forwardMessage.userMessageId = userMessageId;
     if (message.modemCommand) {
       if (message.modemCommand.command in supportedCommands) {
         const command = message.modemCommand.command;
         const params = message.modemCommand.params;
-        message.payloadJson = supportedCommands[command](params);
+        forwardMessage.payloadJson = supportedCommands[command](params);
       } else {
         throw new Error(`Unsupported modem command:`
             + ` ${message.modemCommand}`);
       }
     } else if (message.payloadJson) {
       //TODO: validate payload structure
-      message.payloadJson = message.payloadJson;
+      forwardMessage.payloadJson = message.payloadJson;
     } else if (message.payloadRaw) {
-      message.payloadRaw = message.payloadRaw;
+      forwardMessage.payloadRaw = message.payloadRaw;
     } else {
       throw new Error('Invalid payload definition');
     }
-    let messageId = await submitMessage(message);
+    let messageId = await submitMessage(forwardMessage);
     if (messageId) {
       return messageId;
     } else {
