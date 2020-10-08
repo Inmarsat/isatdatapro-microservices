@@ -15,8 +15,8 @@ const event = require('../infra/eventHandler');
  * Retrieves all Mobile metadata provisioned against a Mailbox
  * 
  * Emits event: ``NewMobile``
- * @param {string} satelliteGatewayName Shorthand name of the network gateway
- * @param {(number|string)} mailboxId Unique Mailbox ID to retrieve from
+ * @param {string} [satelliteGatewayName] Shorthand name of the network gateway
+ * @param {(number|string)} [mailboxId] Unique Mailbox ID to retrieve from
  */
 module.exports = async function(satelliteGatewayName, mailboxId) {
   const thisFunction = {name: logger.getModuleName(__filename)};
