@@ -7,6 +7,7 @@ const submitForwardMessages = require('./src/services/submitForwardMessages');
 const getForwardStatuses = require('./src/services/getForwardStatuses');
 const getForwardMessages = require('./src/services/getForwardMessages');
 const getMobiles = require('./src/services/getMobiles');
+const getEntity = require('./src/services/getEntity');
 const messageCodecs = require('./src/infra/messageCodecs');
 
 const eventHandler = require('./src/infra/eventHandler');
@@ -20,6 +21,7 @@ module.exports = {
   getForwardStatuses,
   getForwardMessages,
   getMobiles,
+  getEntity,
   messageCodecs,
   eventHandler,
   logging,
