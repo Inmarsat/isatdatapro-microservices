@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="utf-8">
-    <title>Module: getForwardMessages</title>
+    <title>Module: getEntity</title>
     
     
     <script src="scripts/prettify/prettify.js"></script>
@@ -331,7 +331,7 @@
     </ul>
 </div>
     <div class="main">
-        <h1 class="page-title" data-filename="module-getForwardMessages.html">Module: getForwardMessages</h1>
+        <h1 class="page-title" data-filename="module-getEntity.html">Module: getEntity</h1>
         
 
 
@@ -340,7 +340,7 @@
     
 <header>
     <h2>
-    getForwardMessages
+    getEntity
     </h2>
     
 </header>  
@@ -351,14 +351,14 @@
         
 <dt>
     <div class="nameContainer">
-        <h4 class="name" id="module:getForwardMessages">
+        <h4 class="name" id="module:getEntity">
             
-            require("getForwardMessages")<span class="signature">(mailboxId, messageIds)</span>
+            require("getEntity")<span class="signature">(category, <span class="optional">filter</span>)</span>
         </h4>
     
         
         <div class="tag-source">
-            services/getForwardMessages.js, line 26
+            services/getEntity.js, line 22
         </div>
         
     </div>
@@ -369,15 +369,7 @@
     
     
     <div class="description">
-        <p>Retrieves a specific list of messages by unique ID.</p>
-<p>Emits events:</p>
-<ul>
-<li><code>NewForwardMessage</code></li>
-<li><code>NewMobile</code></li>
-<li><code>ApiError</code></li>
-<li><code>ApiOutage</code></li>
-<li><code>ApiRecovery</code></li>
-</ul>
+        <p>Retrieves all entity metadata for the given model and filter criteria</p>
     </div>
     
 
@@ -408,15 +400,12 @@
 	
         <tr>
             
-                <td class="name"><code>mailboxId</code></td>
+                <td class="name"><code>category</code></td>
             
             
             <td class="type">
             
                 
-<span class="param-type">number</span>
-|
-
 <span class="param-type">string</span>
 
 
@@ -427,22 +416,160 @@
             
             <td class="description last">
                 
-                <p>The unique Mailbox ID to retrieve from</p></td>
+                    
+                    
+                        
+                    
+                
+                <p>The category/type of the model</p></td>
         </tr>
 	
 	
 	
         <tr>
             
-                <td class="name"><code>messageIds</code></td>
+                <td class="name"><code>filter</code></td>
             
             
             <td class="type">
             
                 
-<span class="param-type">Array.&lt;number></span>
-|
+<span class="param-type">Object</span>
 
+
+            
+            </td>
+            
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                <p>A set of filter criteria</p>
+                
+
+<table class="params">
+    <thead>
+	<tr>
+		
+		<th>Name</th>
+		
+		
+		<th>Type</th>
+		
+		
+		
+		<th class="last">Description</th>
+	</tr>
+	</thead>
+	
+	<tbody>
+	
+	
+        <tr>
+            
+                <td class="name"><code>include</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+            
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                <p>Filters to include</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>exclude</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+            
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                <p>Filters to exclude</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>options</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">Object</span>
+
+
+            
+            </td>
+            
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                <p>Additional options</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>limit</code></td>
+            
+            
+            <td class="type">
+            
+                
 <span class="param-type">number</span>
 
 
@@ -453,7 +580,80 @@
             
             <td class="description last">
                 
-                <p>Unique/list of message IDs to retrieve</p></td>
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                <p>Maximum quantity to return</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>desc</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+            
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                <p>Property name for sort descending</p></td>
+        </tr>
+	
+	
+	
+        <tr>
+            
+                <td class="name"><code>asc</code></td>
+            
+            
+            <td class="type">
+            
+                
+<span class="param-type">string</span>
+
+
+            
+            </td>
+            
+            
+            
+            <td class="description last">
+                
+                    
+                        <span class="optional">optional</span>
+                    
+                    
+                        
+                    
+                
+                <p>Property name for sort ascending</p></td>
+        </tr>
+	
+	
+	</tbody>
+</table>
+            </td>
         </tr>
 	
 	
@@ -504,7 +704,7 @@
     
     
         
-            <div class="description"><p>getForwardMessages module</p></div>
+            <div class="description"><p>getEntity module</p></div>
         
         
         
