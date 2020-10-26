@@ -81,8 +81,8 @@ module.exports = async function() {
                 logger.info(`Message ${message.messageId}`
                     + ` ${newState} ${newStateReason}`);
                 event.forwardMessageStateChange(message.messageId, 
-                    newState, newStateReason, message.mobileId,
-                    message.stateTimeUtc);
+                    newState, newStateReason, message.stateTimeUtc,
+                    message.mobileId);
               }
             } else {
               // implies that another API client submitted, trigger event that can get the submission
