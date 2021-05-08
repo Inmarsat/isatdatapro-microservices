@@ -60,55 +60,57 @@ module.exports = async function(mobileId, message, userMessageId) {
   /**
    * Submits a single message to a mobile/broadcast group and stores the result
    * @private
-   * @param {MessageForward} message A forward message entity
+   * @param {MessageForward} forwardMessage A forward message entity
    * @returns {number} the message ID
    */
-  async function submitMessage(message) {
+  async function submitMessage(forwardMessage) {
     const operation = 'submitFowardMessages';
-    const mailbox = await getMobileMailbox(database, message.mobileId);
+    const mailbox = await getMobileMailbox(database, forwardMessage.mobileId);
     const idpGateway = await getMailboxGateway(database, mailbox);
     const auth = {
       accessId: mailbox.accessId,
       password: mailbox.passwordGet(),
     };
     const callTimeUtc = new Date().toISOString();
-    let apiCallLog = new ApiCallLog(operation, idpGateway.name,
+    const apiCallLog = new ApiCallLog(operation, idpGateway.name,
         mailbox.mailboxId, callTimeUtc);
-    await Promise.resolve(submitForwardMessages(auth, [message.submit()],
+    await Promise.resolve(submitForwardMessages(auth, [forwardMessage.submit()],
         idpGateway.url))
     .then(async function (result) {
       logger.debug(`${operation} result: ${JSON.stringify(result)}`);
-      let success = await handleApiResponse(database, result.errorId,
+      const success = await handleApiResponse(database, result.errorId,
           apiCallLog, idpGateway);
       if (success) {
         if (result.submissions.length > 0) {
           for (let s = 0; s < result.submissions.length; s++) {
-            await message.fromApi(result.submissions[s]);
-            message.mailboxId = mailbox.mailboxId;
-            message.mailboxTimeUtc = message.stateTimeUtc;
-            message.codecServiceId = message.getCodecServiceId();
-            message.codecMessageId = message.getCodecMessageId();
-            if (message.errorId !== 0) {
-              logger.debug(`Submission error: ${message.error}`);
+            await forwardMessage.fromApi(result.submissions[s]);
+            forwardMessage.mailboxId = mailbox.mailboxId;
+            forwardMessage.mailboxTimeUtc = forwardMessage.stateTimeUtc;
+            forwardMessage.codecServiceId = forwardMessage.getCodecServiceId();
+            forwardMessage.codecMessageId = forwardMessage.getCodecMessageId();
+            const { messageId, mobileId } = forwardMessage;
+            if (forwardMessage.errorId !== 0) {
+              logger.debug(`Submission error: ${forwardMessage.error}`);
             } else {
-              logger.debug(`Forward Message ID ${message.messageId} assigned`
-                  + ` by ${idpGateway.name} gateway`);
-              let messageFilter = { messageId: message.messageId };
-              let { id: id, created: newMessage } =
-                  await database.upsert(message, messageFilter);
+              logger.debug(`Forward Message ID ${messageId} assigned` +
+                  ` by ${idpGateway.name} gateway`);
+              const messageFilter = { messageId: messageId };
+              const { id: messageDbId, created: newMessage } =
+                  await database.upsert(forwardMessage, messageFilter);
               if (newMessage) {
-                logger.debug(`Added forward message ${message.messageId}`
-                    + ` to database (${id})`);
-                event.newForwardMessage(message);
+                logger.debug(`Added forward message ${messageId} to database` +
+                    ` (${messageDbId})`);
+                event.newForwardMessage(forwardMessage);
                 let mobile = new Mobile();
-                mobile.mobileId = message.mobileId;
+                mobile.mobileId = mobileId;
                 mobile.mailboxId = mailbox.mailboxId;
-                mobile.mobileWakeupPeriod = message.wakeupPeriodEnum();
-                let mobileFilter = { mobileId: message.mobileId };
-                let { id: id1, created: newMobile } =
+                mobile.mobileWakeupPeriod = forwardMessage.wakeupPeriodEnum();
+                const mobileFilter = { mobileId: mobileId };
+                const { id: mailboxDbId, created: newMobile } =
                     await database.upsert(mobile, mobileFilter);
                 if (newMobile) {
-                  logger.debug(`Mobile ${mobile.mobileId} added to database (${id1})`);
+                  logger.debug(`Mobile ${mobileId} added to database` +
+                      ` (${mailboxDbId})`);
                   event.newMobile(mobile);
                 }
               }
@@ -128,7 +130,8 @@ module.exports = async function(mobileId, message, userMessageId) {
       }
     });
     await database.upsert(apiCallLog);
-    return message.messageId;
+    // return message.messageId;
+    return forwardMessage;
   }
 
   try {
@@ -155,12 +158,9 @@ module.exports = async function(mobileId, message, userMessageId) {
     } else {
       throw new Error('Invalid payload definition');
     }
-    let messageId = await submitMessage(forwardMessage);
-    if (messageId) {
-      return messageId;
-    } else {
-      return null;
-    }
+    const messageMeta = await submitMessage(forwardMessage);
+    if (messageMeta) return messageMeta.messageId;
+    return null;
   } catch (err) {
     logger.error(err.stack);
     throw err;

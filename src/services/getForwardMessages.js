@@ -50,18 +50,18 @@ module.exports = async function(mailboxId, messageIds) {
       password: mailbox.passwordGet(),
     };
     const callTimeUtc = new Date().toISOString();
-    let apiCallLog = new ApiCallLog(operation, idpGateway.name,
+    const apiCallLog = new ApiCallLog(operation, idpGateway.name,
         mailbox.mailboxId, callTimeUtc);
     await Promise.resolve(idpApi.getForwardMessages(auth, messageId,
         idpGateway.url))
     .then(async function (result) {
       logger.debug(`${operation} result: ${JSON.stringify(result)}`);
-      let success = await handleApiResponse(database, 
+      const success = await handleApiResponse(database, 
           result.errorId, apiCallLog, idpGateway);
       if (success) {
         if (result.messages.length > 0) {
           for (let m = 0; m < result.messages.length; m++) {
-            let message = new MessageForward();
+            const message = new MessageForward();
             await message.fromApi(result.messages[m]);
             message.codecServiceId = message.getCodecServiceId();
             message.codecMessageId = message.getCodecMessageId();
@@ -69,34 +69,34 @@ module.exports = async function(mailboxId, messageIds) {
             message.updateStatus();
             // TODO: ensure this covers all cases doesn't lose important data
             if (message.errorId !== 0) {
-              logger.warn(`Forward message ${message.messageId}`
-                  + ` error: ${message.error}`);
+              logger.warn(`Forward message ${message.messageId}` +
+                  ` error: ${message.error}`);
             }
-            let messageFilter = { messageId: message.messageId };
-            let { id, changeList, created } = await database.upsert(message, 
-                messageFilter);
+            const messageFilter = { messageId: message.messageId };
+            const { id: messageDbId, changeList, created } =
+                await database.upsert(message, messageFilter);
             if (!created) {
               if (changeList) {
-                logger.info(`Updated message ${message.messageId}:`
-                    + ` ${JSON.stringify(changeList)}`);
+                logger.info(`Updated message ${message.messageId}:` +
+                    ` ${JSON.stringify(changeList)}`);
               } else {
-                logger.debug(`Message ${message.messageId}`
-                    + ` already in database (${id})`);
+                logger.debug(`Message ${message.messageId}` +
+                    ` already in database (${messageDbId})`);
               }
             } else {
-              logger.info(`Added forward message ${message.messageId}`
-                  + ` to database (${id})`);
+              logger.info(`Added forward message ${message.messageId}` +
+                  ` to database (${messageDbId})`);
               event.newForwardMessage(message);
-              let mobile = new Mobile();
+              const mobile = new Mobile();
               mobile.mobileId = message.mobileId;
               mobile.mailboxId = message.mailboxId;
               mobile.mobileWakeupPeriod = message.wakeupPeriodEnum();
-              let mobileFilter = { mobileId: message.mobileId };
-              let { id: itemId, created: newMobile } =
+              const mobileFilter = { mobileId: message.mobileId };
+              const { id: mobileDbId, created: newMobile } =
                   await database.upsert(mobile, mobileFilter);
               if (newMobile) {
-                logger.info(`Mobile ${mobile.mobileId} added`
-                    + ` to database (${itemId})`);
+                logger.info(`Mobile ${mobile.mobileId} added to database` +
+                    ` (${mobileDbId})`);
                 event.newMobile(mobile);
               }
             }

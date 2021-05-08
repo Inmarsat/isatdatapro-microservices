@@ -36,19 +36,20 @@ module.exports = async function (mailboxParameters) {
         mailboxParameters.password,
         mailboxParameters.satelliteGatewayName
       );
-      let uniFilter = { mailboxId: mailbox.mailboxId };
-      let { id, changeList, created } =
-          await database.upsert(mailbox, uniFilter);
+      const mailboxFilter = { mailboxId: mailbox.mailboxId };
+      const { id, changeList, created } =
+          await database.upsert(mailbox, mailboxFilter);
       //TODO: validate auth/connectivity using getMobiles;
       if (created) {
         logger.debug(`Added mailbox ${mailbox.mailboxId} to database (${id})`);
       } else {
-        logger.debug(`Changes to mailbox ${mailbox.mailboxId}:`
-            + ` ${JSON.stringify(changeList)}`);
+        logger.debug(`Changes to mailbox ${mailbox.mailboxId}:` +
+            ` ${JSON.stringify(changeList)}`);
       }
     } else {
       throw new Error('Invalid mailbox parameters');
     }
+    return true;
   } catch (err) {
     logger.error(err.stack);
     throw err;

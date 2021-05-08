@@ -45,18 +45,18 @@ module.exports = async function() {
           mailbox.mailboxId, operation);
     }
     const callTimeUtc = new Date().toISOString();
-    let moreToRetrieve = null;
-    let apiCallLog = new ApiCallLog(operation, idpGateway.name,
+    let moreToRetrieve;
+    const apiCallLog = new ApiCallLog(operation, idpGateway.name,
         mailbox.mailboxId, callTimeUtc);
     await Promise.resolve(getForwardStatuses(auth, filter, idpGateway.url))
     .then(async function (result) {
-      let success = await handleApiResponse(database, result.errorId,
+      const success = await handleApiResponse(database, result.errorId,
           apiCallLog, idpGateway);
       if (success) {
         apiCallLog.nextStartTimeUtc = result.nextStartTimeUtc;
         if (result.statuses) {
-          logger.debug(`Retrieved ${result.statuses.length} statuses`
-              + ` for mailbox ${mailbox.mailboxId}`);
+          logger.debug(`Retrieved ${result.statuses.length} statuses` +
+              ` for mailbox ${mailbox.mailboxId}`);
           apiCallLog.messageCount = result.statuses.length;
           for (let s=0; s < result.statuses.length; s++) {
             const status = result.statuses[s];
@@ -65,7 +65,7 @@ module.exports = async function() {
             message.updateStatus(status);
             message.mailboxId = mailbox.mailboxId;
             const filterMessage = { messageId: message.messageId };
-            let { changeList, created } =
+            const { changeList, created } =
                 await database.upsert(message, filterMessage);
             if (!created) {
               logger.debug(`State change list: ${JSON.stringify(changeList)}`);
@@ -76,18 +76,18 @@ module.exports = async function() {
                 message = findMessage[0];
               }
               if (changeList && 'state' in changeList) {
-                let newState = message.getStateName();
-                let newStateReason = message.getStateReason();
+                const newState = message.getStateName();
+                const newStateReason = message.getStateReason();
                 logger.info(`Message ${message.messageId}`
                     + ` ${newState} ${newStateReason}`);
                 event.forwardMessageStateChange(message.messageId, 
                     newState, newStateReason, message.stateTimeUtc,
-                    message.mobileId);
+                    message.mobileId, message.referenceNumber);
               }
             } else {
               // implies that another API client submitted, trigger event that can get the submission
-              logger.warn(`New Forward message ${message.messageId} from`
-                  + ` unknown IDP API client on mailbox ${message.mailboxId}`);
+              logger.warn(`New Forward message ${message.messageId} from` +
+                  ` unknown IDP API client on mailbox ${message.mailboxId}`);
               event.otherClientForwardSubmission(message.messageId, 
                   message.mailboxId);
             }
@@ -96,8 +96,8 @@ module.exports = async function() {
             moreToRetrieve = { startMessageId: result.nextStartId };
           }
         } else {
-          logger.debug(`No Statuses to retrieve`
-              + ` from Mailbox ${mailbox.mailboxId}`);
+          logger.debug(`No Statuses to retrieve` +
+              ` from Mailbox ${mailbox.mailboxId}`);
         }
       }
     })

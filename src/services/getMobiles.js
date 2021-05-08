@@ -32,14 +32,14 @@ module.exports = async function(satelliteGatewayName, mailboxId) {
       accessId: mailbox.accessId,
       password: mailbox.passwordGet(),
     };
-    let filter = { pageSize: MAX_MOBILES };
-    if (nextMobileId) { filter.mobileId = nextMobileId }
+    const apiFilter = { pageSize: MAX_MOBILES };
+    if (nextMobileId) { apiFilter.mobileId = nextMobileId }
     const callTimeUtc = new Date().toISOString();
     let apiCallLog = new ApiCallLog(operation, 
         idpGateway.name, mailbox.mailboxId, callTimeUtc);
-    await Promise.resolve(idpApi.getMobileIds(auth, filter, idpGateway.url))
+    await Promise.resolve(idpApi.getMobileIds(auth, apiFilter, idpGateway.url))
     .then(async function (result) {
-      let success = await handleApiResponse(database,
+      const success = await handleApiResponse(database,
           result.errorId, apiCallLog, idpGateway);
       if (success) {
         if (result.mobiles.length > 0) {
@@ -51,16 +51,16 @@ module.exports = async function(satelliteGatewayName, mailboxId) {
             nextMobileId = null;
           }
           for (let m = 0; m < result.mobiles.length; m++) {
-            let mobile = new Mobile();
+            const mobile = new Mobile();
             await mobile.fromApi(result.mobiles[m]);
             mobile.mailboxId = mailbox.mailboxId;
-            let mobileFilter = { mobileId: mobile.mobileId };
-            let { id, changeList, created } =
+            const mobileFilter = { mobileId: mobile.mobileId };
+            const { id, changeList, created } =
                 await database.upsert(mobile, mobileFilter);
             if (!created) {
               if (changeList) {
-                logger.info(`Updated mobile ${mobile.mobileId} (${id}):`
-                    + ` ${JSON.stringify(changeList)}`);
+                logger.info(`Updated mobile ${mobile.mobileId} (${id}):` +
+                    ` ${JSON.stringify(changeList)}`);
               } else {
                 logger.debug(`No updates to mobile ${mobile.mobileId} (${id})`);
               }
@@ -98,8 +98,8 @@ module.exports = async function(satelliteGatewayName, mailboxId) {
     } else if (typeof(mailboxes) !== 'undefined') {
       await getMobiles(mailboxes);
     } else {
-      logger.warn(`Mailbox not found matching mailboxId=${filterMailbox}`
-          + ` or satelliteGateway=${filterGateway}`);
+      logger.warn(`Mailbox not found matching mailboxId=${filterMailbox}` +
+          ` or satelliteGateway=${filterGateway}`);
     }
   } catch (err) {
     logger.error(err.stack);

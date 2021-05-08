@@ -3,8 +3,11 @@ const events = require('../src/infra/eventHandler').emitter;
 
 const testSubmitForward = async(mobileId, message) => {
   try {
+    events.addListener('NewForwardMessage', (detail) => {
+      console.log(`New Forward Message submitted: ${JSON.stringify(detail)}`);
+    });
     events.addListener('NewMobile', (detail) => {
-      console.log('New Mobile found: ' + detail);
+      console.log(`New Mobile found: ${JSON.stringify(detail)}`);
     });
     let submission;
     if (message instanceof Array) {
@@ -16,8 +19,9 @@ const testSubmitForward = async(mobileId, message) => {
         submission = { payloadJson: message };
       }
     }
-    const messageId = await submitMessage(mobileId, submission);
-    console.log(`Submitted messageId ${messageId} to ${mobileId}`);
+    const submittedMessage = await submitMessage(mobileId, submission);
+    console.log(`Submitted messageId ${JSON.stringify(submittedMessage)}` +
+        ` to ${mobileId}`);
   } catch (err) {
     console.log(err);
   }
@@ -71,4 +75,4 @@ const getRxMetrics = {
 };
 
 const testDevice = require('../config/local.settings.json').testTerminal;
-//testSubmitForward(testDevice, ping);
+// testSubmitForward(testDevice, ping);
