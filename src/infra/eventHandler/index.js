@@ -56,12 +56,22 @@ function newForwardMessage(message) {
  * @param {string} stateTimeUtc The time of the state change
  * @param {string} [mobileId] The mobile ID if known
  */
-function forwardMessageStateChange(messageId,
-    newState, reason, stateTimeUtc, mobileId) {
+function forwardMessageStateChange(
+    messageId,
+    newState,
+    reason,
+    stateTimeUtc,
+    mobileId,
+    referenceNumber) {
   emitter.emit('ForwardMessageStateChange', 
-      messageId, newState, reason, stateTimeUtc, mobileId,
-      `Forward message ${messageId} to ${mobileId}`
-      + ` changed to ${newState} (${reason}) at ${stateTimeUtc}`);
+      messageId,
+      newState,
+      reason,
+      stateTimeUtc,
+      mobileId,
+      `Forward message ${messageId} to ${mobileId}` +
+      ` changed to ${newState} (${reason}) at ${stateTimeUtc}`,
+      referenceNumber);
 }
 
 /**
